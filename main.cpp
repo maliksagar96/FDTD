@@ -23,7 +23,6 @@ void writeMatrixToFile(const std::vector<std::vector<double>>& field, const std:
   fout.close();
 }
 
-
 int main() {
 
 //Defining cell limits
@@ -43,11 +42,9 @@ std::vector<std::vector<double>> Ex(Nx, std::vector<double>(Ny, 0.0));
 std::vector<std::vector<double>> Ey(Nx, std::vector<double>(Ny, 0.0));
 std::vector<std::vector<double>> Hz(Nx, std::vector<double>(Ny, 0.0));
 
-
-
-for (int j = 0; j < Ny; ++j) {
-  Ey[10][j] = 10*exp(-pow((j - Ny/2.0) / 10.0, 2));  // Gaussian in Y at x=1
-}
+// for (int j = 0; j < Ny; ++j) {
+//   Ey[10][j] = 10*exp(-pow((j - Ny/2.0) / 10.0, 2));  // Gaussian in Y at x=1
+// }
 
 writeMatrixToFile(Ey, "Ey_output.txt");
 
@@ -58,13 +55,17 @@ double c = 1.0 / sqrt(mu * epsilon);
 double dt = 1.0 / (c * sqrt(1.0/(dx*dx) + 1.0/(dy*dy)));
 
 dt *= 0.5;
-int Nt = 100;
+int Nt = 10000;
+double T0 = 20;
+double tau = 6;
 //Time marching.
+Ey[Nx/2][Ny/2] = 0.5;
 for(int t = 0;t<Nt;t++) {
   //Update Hz
+  
   for (int i = 0; i < Nx-1; ++i){
     for (int j = 0; j < Ny-1; ++j){
-      Hz[i][j] = Hz[i][j] + (dt / (mu * dx)) * (Ey[i+1][j] - Ey[i][j]) - (dt / (mu * dy)) * (Ex[i][j+1] - Ex[i][j]);
+      Hz[i][j] = Hz[i][j] - (dt / (mu * dx)) * (Ey[i+1][j] - Ey[i][j]) + (dt / (mu * dy)) * (Ex[i][j+1] - Ex[i][j]);
     }      
   }
     
@@ -80,7 +81,7 @@ for (int i = 1; i < Nx; ++i) {  // i starts at 1
     }
 }
 
-writeMatrixToFile(Ey, "Ey_" + std::to_string(t) + ".txt");
+writeMatrixToFile(Ey, "data/Ey_" + std::to_string(t) + ".txt");
 
 
 }
