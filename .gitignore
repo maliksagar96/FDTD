@@ -1,4 +1,6 @@
-1d/data
+1d/data/*mp4
+1d/data/*/
+
 1d/html
 1d/latex
 
