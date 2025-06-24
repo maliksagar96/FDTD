@@ -50,6 +50,11 @@ public:
   */
   void fdtd_1d_abc();
 
+  /**
+  * @brief The simplemost implementation of dielectric material. I will mark some particular area as dielectric material. 
+  */
+  void fdtd_1d_dielectric();
+
   /// Writes 1D array to a text file which can then be visualised.
   void writeArrayToFile(const string, const string, int);
 

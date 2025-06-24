@@ -1,5 +1,3 @@
-
-
 #include <iostream> 
 #include <vector> 
 #include <cmath>
@@ -16,15 +14,14 @@ int main() {
   const int Nx = 200;
   const double t0 = 40.0;
   const double spread = 12.0;
-
   
   FDTD_1D sim;
   sim.set_spacing(Nx);
   sim.set_time_steps(Nt);
   sim.set_excitation(t0, spread);
   // sim.fdtd_1d_basic();
-  sim.fdtd_1d_abc();
-
+  // sim.fdtd_1d_abc();
+  sim.fdtd_1d_dielectric();
 
   return 0;
 }

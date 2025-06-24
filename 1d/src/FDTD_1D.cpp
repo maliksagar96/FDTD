@@ -74,8 +74,6 @@ void FDTD_1D::fdtd_1d_basic() {
 /**
  @brief : 1d FDTD code with boundary condition applied. In plain and simple language the boundary conditons is such that it takes 2 time steps for ligth to cross one simulation cell. 
  The 0th and the nth cell are updated every 2nd time step.  
-
-
 */
 void FDTD_1D::fdtd_1d_abc() {
 
@@ -103,7 +101,6 @@ void FDTD_1D::fdtd_1d_abc() {
       ex[nx-1] = ex_boundary_odd[1];
     }
 
-
     // // Storing the value of boundary points every 2nd iteration. This is the condition in the Sullivan book. I have written another code which is more readable and gives the same affect. 
     // ex[0] = ex_low_m2;
     // ex_low_m2 = ex_low_m1;
@@ -126,11 +123,66 @@ void FDTD_1D::fdtd_1d_abc() {
       hy[i] += 0.5 * (ex[i] - ex[i + 1]);
     }
 
+    //wrting to text file. 
+    writeArrayToFile("ElectricField","../data/Ex/", t);
+    writeArrayToFile("MagneticField","../data/Hy/", t);
+  }
+
+}
+
+
+
+   
+
+
+void FDTD_1D::fdtd_1d_dielectric() {
+ 
+  // Taking 2 elements one is the 0th element and the other is nth element.
+  vector<double> ex_boundary_even(2, 0);
+  vector<double> ex_boundary_odd(2, 0);
+
+  vector<double> dielectric_constant(nx, 1);
+
+  for(int i = 175;i<200;i++) {
+    dielectric_constant[i] = 0.2;
+  }
+  
+  for (int t = 0; t < nt; t++) {
     
+    for (int i = 1; i < nx; i++) {
+      ex[i] += 0.5 * dielectric_constant[i] * (hy[i - 1] - hy[i]);
+    }
+
+    ex[nc] = exp(-0.5 * pow((t0 - t) / spread, 2));
+
+    if((t > 0) && (t%2 == 0)) {
+      ex[0] =    ex_boundary_even[0];
+      ex[nx-1] = ex_boundary_even[1];
+    }
+
+    if((t > 1) && (t%2 == 1)) {
+      ex[0] =    ex_boundary_odd[0];
+      ex[nx-1] = ex_boundary_odd[1];
+    }
+
+    if((t >=0) && (t%2 == 0)) {
+      ex_boundary_even[0] = ex[1];
+      ex_boundary_even[1] = ex[nx-2];
+    }
+    
+    if((t >=1) && (t%2 == 1)) {
+      ex_boundary_odd[0] = ex[1];
+      ex_boundary_odd[1] = ex[nx-2];
+    }
+
+    for (int i = 0; i < nx - 1; i++) {
+      hy[i] += 0.5 * (ex[i] - ex[i + 1]);
+    }
 
     //wrting to text file. 
     writeArrayToFile("ElectricField","../data/Ex/", t);
     writeArrayToFile("MagneticField","../data/Hy/", t);
   }
 
+  
 }
