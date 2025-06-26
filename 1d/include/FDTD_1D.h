@@ -52,6 +52,9 @@ public:
 
   /**
   * @brief The simplemost implementation of dielectric material. I will mark some particular area as dielectric material. 
+    Right now the dielectric area is hard coded. 
+    The reflection from the first dielectric face agress with the interaction with real dielectric medium. 
+    The problem lies in the ABC implementation in the dielectric region. 
   */
   void fdtd_1d_dielectric();
 
