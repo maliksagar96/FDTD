@@ -130,11 +130,6 @@ void FDTD_1D::fdtd_1d_abc() {
 
 }
 
-
-
-   
-
-
 void FDTD_1D::fdtd_1d_dielectric() {
  
   // Taking 2 elements one is the 0th element and the other is nth element.
