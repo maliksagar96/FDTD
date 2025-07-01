@@ -135,20 +135,25 @@ void FDTD_1D::fdtd_1d_dielectric() {
   // Taking 2 elements one is the 0th element and the other is nth element.
   vector<double> ex_boundary_even(2, 0);
   vector<double> ex_boundary_odd(2, 0);
+  vector<double> cb(nx, 1);
 
-  vector<double> dielectric_constant(nx, 1);
+  float epsilon = 4, kstart = 3*nx/4;
+   
+  for (int k=1; k <= nx; k++ ) { 
+    cb[k] = 0.5;
+  }
 
-  for(int i = 175;i<200;i++) {
-    dielectric_constant[i] = 0.2;
+  for (int k=kstart; k <= nx; k++ ) {
+    cb[k] = 0.5/epsilon;
   }
   
   for (int t = 0; t < nt; t++) {
     
     for (int i = 1; i < nx; i++) {
-      ex[i] += 0.5 * dielectric_constant[i] * (hy[i - 1] - hy[i]);
+      ex[i] += cb[i] * (hy[i - 1] - hy[i]);
     }
 
-    ex[nc] = exp(-0.5 * pow((t0 - t) / spread, 2));
+    ex[5] = exp(-0.5 * pow((t0 - t) / spread, 2));
 
     if((t > 0) && (t%2 == 0)) {
       ex[0] =    ex_boundary_even[0];

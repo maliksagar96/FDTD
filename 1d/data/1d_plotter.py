@@ -10,10 +10,9 @@ plotHy = 0
 
 
 if(plotEx):
-  dataDir = "Ex/"
-  framesDir = "Ex_frames/"
 
-  for i in tqdm(range(0, 500), desc = "ElectricField"):
+
+  for i in tqdm(range(0, 1000), desc = "ElectricField"):
     filename = "ElectricField_" + str(i)
     data = np.loadtxt(dataDir+filename+".txt")  
     plt.plot(data)
