@@ -10,7 +10,6 @@ using namespace std;
 FDTD_2D::FDTD_2D() : globalIteration(0), nt(0), nx(0), ny(0), nc(0), t0(0.0), spread(1.0) {}
 FDTD_2D::~FDTD_2D() = default;
 
-
 void FDTD_2D::set_time_steps(int nt){
   this->nt = nt;
 }
@@ -24,11 +23,31 @@ void FDTD_2D::set_spacing(int nx, int ny){
   hx.resize(nx, vector<double>(ny, 0.0));
   hy.resize(nx, vector<double>(ny, 0.0));
   epsilon_r.resize(nx, vector<double>(ny, 1.0));
+  mu_r.resize(nx, vector<double>(ny, 1.0));
+  sigma.resize(nx, vector<double>(ny, 0.0));
+
+  ca_ex.resize(nx, vector<double>(ny, 0.0));
+  cb_ex.resize(nx, vector<double>(ny, 0.0));
+  ca_ey.resize(nx, vector<double>(ny, 0.0));
+  cb_ey.resize(nx, vector<double>(ny, 0.0));
+  da_Hzx.resize(nx, vector<double>(ny, 0.0));
+  da_Hzy.resize(nx, vector<double>(ny, 0.0));
+  db_Hzx.resize(nx, vector<double>(ny, 0.0));
+  db_Hzy.resize(nx, vector<double>(ny, 0.0));
+
 }
 
 void FDTD_2D::set_excitation(double t0, double spread){
   this->t0 = t0;
   this->spread = spread;
+}
+
+void FDTD_2D::set_PML_layers(int pml_nx, int pml_ny){
+  for(int i = nx-pml_nx;i<nx;i++){
+    for(int j = ny-pml_ny;j<ny;j++){
+      
+    }
+  }
 }
 
 void FDTD_2D::write_Matrix_To_File(const vector<vector<double>>& field, const string& filename){
@@ -86,6 +105,16 @@ void FDTD_2D::fdtd_2d_basic(){
     write_Matrix_To_File(ez, "../data/Ez/Ez_" + std::to_string(t) + ".txt");
 
   }
+
+}
+
+void FDTD_2D::fdtd_2d_PML(){
+  
+  for(int t = 0;t<nt;t++) {
+
+    
+  }
+
 
 }
 

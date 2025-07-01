@@ -14,35 +14,37 @@ class FDTD_2D {
     FDTD_2D();
     ~FDTD_2D();
     
-
-  ///Set number of iterations.
-  void set_time_steps(int);
-
-  ///Set spacing in 1D.
-  void set_spacing(int, int);
-
     /**
- * @brief Set Gaussian‑pulse excitation parameters.
- * @param t0     Time‑center of the pulse (in time steps)
- * @param spread Standard deviation controlling pulse width
- */
-  void set_excitation(double t0, double spread);
-    void fdtd_2d_basic();
+     * @brief Set the number of time steps for the FDTD simulation.  
+     * @param steps The number of time steps to run the simulation.
+     */
+    void set_time_steps(int steps);
+
+    void set_spacing(int, int);
+
+    void set_excitation(double t0, double spread);
+    
     void write_Matrix_To_File(const vector<vector<double>>&, const string&);
 
-    private:
-      int globalIteration;
-      int nx, ny, nt, nc;
-      double dx, dy;
-      double dt;
-      double epsilon;
-      double mu;
-      double omega;
-      double t0, spread;
+    void fdtd_2d_basic();
 
-      vector<vector<double>> ez, dz, hx, hy, epsilon_r;
+    void set_PML_layers(int, int);
+
+    void fdtd_2d_PML();
+
+  private:
+    int globalIteration;
+    int nx, ny, nt, nc;
+    double dx, dy;
+    double dt;
+    double epsilon;
+    double mu;
+    double omega;
+    double t0, spread;
+
+    vector<vector<double>> ca_ex, cb_ex, ca_ey, cb_ey, da_Hzx, da_Hzy, db_Hzx, db_Hzy;
+    vector<vector<double>> ez, dz, hx, hy, epsilon_r, mu_r, sigma;
 };
-
 
 
 #endif
