@@ -43,6 +43,9 @@ void FDTD_2D::set_excitation(double t0, double spread){
 }
 
 void FDTD_2D::set_PML_layers(int pml_nx, int pml_ny){
+  
+
+
   for(int i = nx-pml_nx;i<nx;i++){
     for(int j = ny-pml_ny;j<ny;j++){
       
