@@ -1,0 +1,10 @@
+{
+  "frequency" : 1e9,
+  "domain_x": [-1,1],
+  "domain_y": [-1,1],
+  "source":"sin", 
+  "bandwidth": 5,
+  "tau":3,
+  "source_position":[0,0],
+  "iterations":1
+}
