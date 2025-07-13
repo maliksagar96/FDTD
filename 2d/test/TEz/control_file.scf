@@ -1,10 +1,13 @@
 {
-  "frequency" : 1e9,
+  "frequency" : 3e9,
   "domain_x": [-1,1],
   "domain_y": [-1,1],
-  "source":"sin", 
+  "source":"gaussian", 
   "bandwidth": 5,
   "tau":3,
   "source_position":[0,0],
-  "iterations":1
+  "CFL" : 1,
+  
+  "data_capture_interval": 5,
+  "iterations":200
 }

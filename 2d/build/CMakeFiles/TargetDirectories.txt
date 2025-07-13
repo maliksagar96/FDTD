@@ -1,3 +1,3 @@
-/home/sagarmalik/Documents/git/FDTD/2d/build/CMakeFiles/FDTD_2D.dir
-/home/sagarmalik/Documents/git/FDTD/2d/build/CMakeFiles/edit_cache.dir
-/home/sagarmalik/Documents/git/FDTD/2d/build/CMakeFiles/rebuild_cache.dir
+/mnt/c/github/FDTD/2d/build/CMakeFiles/FDTD_2D.dir
+/mnt/c/github/FDTD/2d/build/CMakeFiles/edit_cache.dir
+/mnt/c/github/FDTD/2d/build/CMakeFiles/rebuild_cache.dir
