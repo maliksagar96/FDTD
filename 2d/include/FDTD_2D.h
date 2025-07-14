@@ -54,6 +54,8 @@ class FDTD_2D {
 
     void fdtd_2d_PML();
 
+    void write_Vector_To_File(const vector<double>&, const string&);
+    
     void write_Matrix_To_File(const vector<vector<double>>&, const string&);
 
   private:

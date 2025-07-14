@@ -242,59 +242,72 @@ void FDTD_2D::set_PML_kappa(){
     kappa_y[j] = 1.0 + (kappa_max - 1.0) * pow((j - (ny - pml_layers - 1)) / (double)pml_layers, grading_order);
   }
   
-  // write_Matrix_To_File(sigma, "../../data/sigma.txt");
+  write_Vector_To_File(kappa_x, "../../data/kappa_x.txt");
+  write_Vector_To_File(kappa_y, "../../data/kappa_y.txt");
 }
 
 void FDTD_2D::set_PML_a(){
-  double grading_order = 3.0;
-  double a_max = 0.05;  
+  double grading_order = 2.0;
+  double a_max = 0.1;  
 
 // Left boundary
 for (int i = 0; i < pml_layers; i++) {
-  double x = (pml_layers - i - 1) / (double)pml_layers;
+  
+  double x = (i - (nx - pml_layers - 1)) / (double)pml_layers;
   pml_a_x[i] = a_max * pow(x, grading_order);
 }
 
 // Right boundary
 for (int i = nx - pml_layers; i < nx; i++) {
-  double x = (i - (nx - pml_layers - 1)) / (double)pml_layers;
+  
+  double x = (pml_layers - i - 1) / (double)pml_layers;
   pml_a_x[i] = a_max * pow(x, grading_order);
 }
 
 // Bottom boundary
 for (int j = 0; j < pml_layers; j++) {
-  double y = (pml_layers - j - 1) / (double)pml_layers;
+  double y = (j - (ny - pml_layers - 1)) / (double)pml_layers;
   pml_a_y[j] = a_max * pow(y, grading_order);
 }
 
 // Top boundary
 for (int j = ny - pml_layers; j < ny; j++) {
-  double y = (j - (ny - pml_layers - 1)) / (double)pml_layers;
+  double y = (pml_layers - j - 1) / (double)pml_layers;
+  // double x = (pml_layers - i - 1) / (double)pml_layers;
   pml_a_y[j] = a_max * pow(y, grading_order);
 }
 
+  write_Vector_To_File(pml_a_x, "../../data/pml_a_x.txt");
+  write_Vector_To_File(pml_a_y, "../../data/pml_a_y.txt");
 }
 
 void FDTD_2D::set_PML_b() {
-  // Compute pml_b_x
-  for (int i = 0; i < nx; i++) {
-      if (kappa_x[i] != 0.0) {
-          double loss_term = (sigma[i][0] / kappa_x[i]) + pml_a_x[i];
-          pml_b_x[i] = std::exp(-loss_term * dt / epsilon_0);
-      } else {
-          pml_b_x[i] = 1.0;
-      }
+  
+  
+  // Left boundary
+  for(int i = 0;i<pml_layers;i++){
+    double loss_term = (sigma[i][0] / kappa_x[i]) + pml_a_x[i];  
+    pml_b_x[i] = std::exp(-loss_term * dt * eta_0);
+  }
+  
+  //Right boundary
+  for(int i = nx-pml_layers;i<nx;i++){
+    double loss_term = (sigma[i][0] / kappa_x[i]) + pml_a_x[i];  
+    pml_b_x[i] = std::exp(-loss_term * dt * eta_0);
   }
 
-  // Compute pml_b_y
-  for (int j = 0; j < ny; j++) {
-      if (kappa_y[j] != 0.0) {
-          double loss_term = (sigma[0][j] / kappa_y[j]) + pml_a_y[j];
-          pml_b_y[j] = std::exp(-loss_term * dt * eta_0);
-      } else {
-          pml_b_y[j] = 1.0;
-      }
+  for (int j = 0; j < pml_layers; j++) { 
+    double loss_term = (sigma[0][j] / kappa_y[j]) + pml_a_y[j];
+    pml_b_y[j] = std::exp(-loss_term * dt * eta_0);
   }
+
+  for(int j = ny-pml_layers;j<ny;j++){
+    double loss_term = (sigma[0][j] / kappa_y[j]) + pml_a_y[j];
+    pml_b_y[j] = std::exp(-loss_term * dt * eta_0);
+  }
+
+  write_Vector_To_File(pml_b_x, "../../data/pml_b_x.txt");
+  write_Vector_To_File(pml_b_y, "../../data/pml_b_y.txt");
 }
 
 void FDTD_2D::set_PML_c() {
@@ -323,6 +336,8 @@ void FDTD_2D::set_PML_c() {
       else
           pml_c_y[j] = 0.0;
   }
+  write_Vector_To_File(pml_c_x, "../../data/pml_c_x.txt");
+  write_Vector_To_File(pml_c_y, "../../data/pml_c_y.txt");
 }
 
 void FDTD_2D::set_PML_layers(){
@@ -331,6 +346,20 @@ void FDTD_2D::set_PML_layers(){
   set_PML_a();
   set_PML_b();
   set_PML_c();
+}
+
+void FDTD_2D::write_Vector_To_File(const vector<double>& field, const string& filename) {
+  ofstream fout(filename);
+  if (!fout.is_open()) {
+      cerr << "Error: Cannot open file " << filename << endl;
+      return;
+  }
+
+  for (const auto& val : field) {
+      fout << val << "\n";
+  }
+
+  fout.close();
 }
 
 void FDTD_2D::write_Matrix_To_File(const vector<vector<double>>& field, const string& filename){
@@ -391,6 +420,21 @@ void FDTD_2D::fdtd_2d_basic_TEz(){
 
 
 void FDTD_2D::fdtd_2d_basic_TEz_PML() {
+  
+  // for(int i = 0;i<nx;i++){  
+  //   kappa_x[i] = 1.0;
+  //   kappa_y[i] = 1.0;
+  //   pml_a_x[i] = 0.0;
+  //   pml_b_x[i] = 1.0;
+  //   pml_c_x[i] = 0.0;
+  //   pml_a_y[i] = 0.0;
+  //   pml_b_y[i] = 1.0;
+  //   pml_c_y[i] = 0.0;
+  //   for(int j = 0;j<ny;j++) {
+  //     sigma[i][j] = 0.0;
+  //   }
+  // }
+  
   for (int t = 0; t < nt; t++) {
 
     // --- Update Dz with Ez CPML ---
@@ -401,6 +445,9 @@ void FDTD_2D::fdtd_2d_basic_TEz_PML() {
 
         psiEz_x[i][j] = pml_b_x[i] * psiEz_x[i][j] + pml_c_x[i] * dHy_dx;
         psiEz_y[i][j] = pml_b_y[j] * psiEz_y[i][j] + pml_c_y[j] * dHx_dy;
+
+        // psiEz_x[i][j] = 0.0;
+        // psiEz_y[i][j] = 0.0;
 
         Dz[i][j] += dt * ((1.0 / kappa_x[i]) * dHy_dx + psiEz_x[i][j] - (1.0 / kappa_y[j]) * dHx_dy - psiEz_y[i][j]);
       }
@@ -421,9 +468,9 @@ void FDTD_2D::fdtd_2d_basic_TEz_PML() {
         double dEz_dy = (Ez[i][j] - Ez[i][j + 1]) / delta_y;
 
         psiHx_y[i][j] = pml_b_y[j] * psiHx_y[i][j] + pml_c_y[j] * dEz_dy;
+        // psiHx_y[i][j] = 0.0;
 
-        Hx[i][j] += dt * (
-          (1.0 / (mu_0 * kappa_y[j])) * dEz_dy + psiHx_y[i][j]
+        Hx[i][j] += dt * ((1.0 / (kappa_y[j])) * dEz_dy + psiHx_y[i][j]
         );
       }
     }
@@ -433,12 +480,14 @@ void FDTD_2D::fdtd_2d_basic_TEz_PML() {
       for (int j = 0; j < ny - 1; j++) {
         double dEz_dx = (Ez[i + 1][j] - Ez[i][j]) / delta_x;
         psiHy_x[i][j] = pml_b_x[i] * psiHy_x[i][j] + pml_c_x[i] * dEz_dx;
-        Hy[i][j] += dt * ((1.0 / (mu_0 * kappa_x[i])) * dEz_dx + psiHy_x[i][j]);
+        // psiHy_x[i][j] = 0.0;
+
+        Hy[i][j] += dt * ((1.0 / (kappa_x[i])) * dEz_dx + psiHy_x[i][j]);
       }
     }
 
     if (t % data_capture_interval == 0) {
-      write_Matrix_To_File(Ez, "../../data/Ez/Ez_" + std::to_string(t) + ".txt");
+      write_Matrix_To_File(psiHy_x, "../../data/Ez/Ez_" + std::to_string(t) + ".txt");
     }
   }
 }

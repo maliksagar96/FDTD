@@ -9,5 +9,5 @@
   "CFL" : 1,
   
   "data_capture_interval": 5,
-  "iterations":200
+  "iterations":600
 }
