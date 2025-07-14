@@ -79,11 +79,11 @@ class FDTD_2D {
     int source_x, source_y;
     string source_type;
 
-    vector<double> kappa_x, kappa_y, pml_a_x, pml_a_y, pml_b_x, pml_b_y, pml_c_x, pml_c_y;
+    vector<double> kappa_x, kappa_y, pml_a_x, pml_a_y, pml_b_x, pml_b_y, pml_c_x, pml_c_y, sigma_x, sigma_y;
     
 
     vector<vector<double>> Ca, Cb, ca_ex, cb_ex, ca_ey, cb_ey, da_Hzx, da_Hzy, db_Hzx, db_Hzy;
-    vector<vector<double>> Ex, Ey, Ez,Dx, Dy, Dz, Hx, Hy, Hz, epsilon_r, mu_r, sigma;
+    vector<vector<double>> Ex, Ey, Ez,Dx, Dy, Dz, Hx, Hy, Hz, epsilon_r, mu_r;
     vector<vector<double>> psiEz_x, psiEz_y, psiHy_x, psiHy_y, psiEx_x, psiEx_y, psiHx_x, psiHx_y;
 
     function<double(int)> source_function;

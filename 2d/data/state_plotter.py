@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Example: load or create your 2D sigma matrix
-sigma = np.loadtxt("sigma.txt")  # or however you generate it
+sigma_x = np.loadtxt("sigma_x.txt")  # or however you generate it
+sigma_y = np.loadtxt("sigma_y.txt")
 kappa_x = np.loadtxt("kappa_x.txt")
 kappa_y = np.loadtxt("kappa_y.txt")
 pml_a_x = np.loadtxt("pml_a_x.txt")
@@ -13,11 +14,17 @@ pml_c_x = np.loadtxt("pml_c_x.txt")
 pml_c_y = np.loadtxt("pml_c_y.txt")
 
 # Plot using imshow (similar to imagesc)
-plt.imshow(sigma.T, origin='lower', cmap='hot', aspect='auto')
-plt.colorbar(label='Sigma')
+plt.figure()
+plt.plot(sigma_x)
 plt.title('PML Conductivity Profile')
 plt.xlabel('i (x-direction)')
-plt.ylabel('j (y-direction)')
+plt.ylabel('Sigma_x')
+
+plt.figure()
+plt.plot(sigma_y)
+plt.title('PML Conductivity Profile')
+plt.xlabel('i (x-direction)')
+plt.ylabel('Sigma_y')
 
 plt.figure()
 plt.plot(kappa_x)

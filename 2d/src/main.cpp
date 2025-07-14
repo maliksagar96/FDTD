@@ -21,6 +21,7 @@ int main(int argc, char* argv[]) {
   sim.init();
   sim.print_initial_state();
   sim.fdtd_2d_basic_TEz_PML();
+  // sim.fdtd_2d_basic_TEz();
 
   return 0;
 }

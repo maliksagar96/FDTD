@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/mnt/c/github/FDTD/2d/build/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
