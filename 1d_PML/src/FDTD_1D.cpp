@@ -50,8 +50,8 @@ void FDTD_1D::init() {
   set_dt();
   set_fields();
   setup_source_function();
-  // set_PML_layers();
-  set_sigma_graded();
+  set_PML_layers();
+  // set_sigma_graded();
   set_field_coeffs();
   // exit(0);
   print_initial_state();
@@ -75,8 +75,8 @@ void FDTD_1D::print_initial_state() {
 void FDTD_1D::set_spacing() {
   delta_z = c0 / (10 * frequency);  
   double wavelength = c0 / frequency;
-  // pml_layers = 3 * int(wavelength / delta_z);  
-  pml_layers = 25;  
+  pml_layers =  int(3*wavelength / delta_z);  
+  // pml_layers = 25;  
   nz = int((domain[1] - domain[0]) / delta_z) + 2 * pml_layers;
   cout << "nz: " << nz << endl;
 }
@@ -160,13 +160,13 @@ void FDTD_1D::set_sigma_graded() {
 void FDTD_1D::set_PML_layers() {
   double grading_order_sigma = 3.0;
   double kappa_max = 5.0, grading_order_kappa = 3.0;
-  double a_max = 1.0, grading_order_a = 1.0;
+  double a_max = 0.10, grading_order_a = 1.0;
 
   double Delta = 1e-12;
   double sigma_max = -(grading_order_sigma + 1) * log(Delta) * c0 * epsilon_0 / (2 * pml_layers * delta_z);
 
   // Left PML (Electric field)
-  for (int i = 0; i < pml_layers; i++) {
+  for (int i = 1; i < pml_layers; i++) {
     double z = (pml_layers - i) / static_cast<double>(pml_layers);
     double z_for_a = 1.0 - (z / static_cast<double>(pml_layers));
     sigma_z_e[i] = sigma_max * pow(z, grading_order_sigma);
@@ -179,8 +179,9 @@ void FDTD_1D::set_PML_layers() {
     pml_c_z_e[i] = (denom != 0.0) ? sigma_z_e[i] * (pml_b_z_e[i] - 1.0) / denom : 0.0;
   }
 
+  
   // Right PML (Electric field)
-  for (int i = nz - pml_layers; i < nz; i++) {
+  for (int i = nz - pml_layers + 1; i < nz; i++) {
     double z = (i - (nz - pml_layers)) / static_cast<double>(pml_layers);
     double z_for_a = 1.0 - (z / static_cast<double>(pml_layers));
     sigma_z_e[i] = sigma_max * pow(z, grading_order_sigma);
@@ -193,48 +194,41 @@ void FDTD_1D::set_PML_layers() {
     pml_c_z_e[i] = (denom != 0.0) ? sigma_z_e[i] * (pml_b_z_e[i] - 1.0) / denom : 0.0;
   }
 
-  // Left PML (Magnetic field)
-  for (int i = 0; i < pml_layers; i++) {
-    double z = (pml_layers - i - 0.5) / static_cast<double>(pml_layers);
-    double z_for_a = 1.0 - (z / static_cast<double>(pml_layers));
-    sigma_z_h[i] = (mu_0 / epsilon_0) * sigma_max * pow(z, grading_order_sigma);
-    kappa_z_h[i] = 1.0 + (kappa_max - 1.0) * pow(z, grading_order_kappa);
-    pml_a_z_h[i] = a_max * pow(z_for_a, grading_order_a);
-
-    double loss = (sigma_z_h[i] / kappa_z_h[i]) + pml_a_z_h[i];
-    pml_b_z_h[i] = exp(-loss * dt / epsilon_0);
-    double denom = sigma_z_h[i] * kappa_z_h[i] + pow(kappa_z_h[i], 2) * pml_a_z_h[i];
-    pml_c_z_h[i] = (denom != 0.0) ? sigma_z_h[i] * (pml_b_z_h[i] - 1.0) / denom : 0.0;
+  for (int i = 0; i < nz - 1; i++) {
+    sigma_z_h[i] = (mu_0 / epsilon_0) * 0.5 * (sigma_z_e[i] + sigma_z_e[i + 1]);
+    kappa_z_h[i] = 0.5*(kappa_z_e[i] + kappa_z_e[i+1]);
+    pml_a_z_h[i] = 0.5*(pml_a_z_e[i] + pml_a_z_e[i+1]);
+    pml_b_z_h[i] = 0.5*(pml_b_z_e[i] + pml_b_z_e[i+1]);
+    pml_c_z_h[i] = 0.5*(pml_c_z_e[i] + pml_c_z_e[i+1]);
   }
 
-  // Right PML (Magnetic field)
-  for (int i = nz - pml_layers; i < nz; i++) {
-    double z = (i - (nz - pml_layers) - 0.5) / static_cast<double>(pml_layers);
-    double z_for_a = 1.0 - (z / static_cast<double>(pml_layers));
-    sigma_z_h[i] = (mu_0 / epsilon_0) * sigma_max * pow(z, grading_order_sigma);
-    kappa_z_h[i] = 1.0 + (kappa_max - 1.0) * pow(z, grading_order_kappa);
-    pml_a_z_h[i] = a_max * pow(z_for_a, grading_order_a);
+  // // Left PML (Magnetic field)
+  // for (int i = 0; i < pml_layers-1; i++) {
+  //   double z = (pml_layers - i - 0.5) / static_cast<double>(pml_layers);
+  //   double z_for_a = 1.0 - (z / static_cast<double>(pml_layers));
+  //   sigma_z_h[i] = (mu_0 / epsilon_0) * sigma_max * pow(z, grading_order_sigma);
+  //   kappa_z_h[i] = 1.0 + (kappa_max - 1.0) * pow(z, grading_order_kappa);
+  //   pml_a_z_h[i] = a_max * pow(z_for_a, grading_order_a);
 
-    double loss = (sigma_z_h[i] / kappa_z_h[i]) + pml_a_z_h[i];
-    pml_b_z_h[i] = exp(-loss * dt / epsilon_0);
-    double denom = sigma_z_h[i] * kappa_z_h[i] + pow(kappa_z_h[i], 2) * pml_a_z_h[i];
-    pml_c_z_h[i] = (denom != 0.0) ? sigma_z_h[i] * (pml_b_z_h[i] - 1.0) / denom : 0.0;
-  }
+  //   double loss = (sigma_z_h[i] / kappa_z_h[i]) + pml_a_z_h[i];
+  //   pml_b_z_h[i] = exp(-loss * dt / epsilon_0);
+  //   double denom = sigma_z_h[i] * kappa_z_h[i] + pow(kappa_z_h[i], 2) * pml_a_z_h[i];
+  //   pml_c_z_h[i] = (denom != 0.0) ? sigma_z_h[i] * (pml_b_z_h[i] - 1.0) / denom : 0.0;
+  // }
 
-  // Interior (non-PML) region
-  for (int i = pml_layers; i < nz - pml_layers; ++i) {
-    sigma_z_e[i] = 0.0;
-    kappa_z_e[i] = 1.0;
-    pml_a_z_e[i] = 0.0;
-    pml_b_z_e[i] = 1.0;
-    pml_c_z_e[i] = 0.0;
+  // // Right PML (Magnetic field)
+  // for (int i = nz - pml_layers; i < nz-1; i++) {
+  //   double z = (i - (nz - pml_layers) - 0.5) / static_cast<double>(pml_layers);
+  //   double z_for_a = 1.0 - (z / static_cast<double>(pml_layers));
+  //   sigma_z_h[i] = (mu_0 / epsilon_0) * sigma_max * pow(z, grading_order_sigma);
+  //   kappa_z_h[i] = 1.0 + (kappa_max - 1.0) * pow(z, grading_order_kappa);
+  //   pml_a_z_h[i] = a_max * pow(z_for_a, grading_order_a);
 
-    sigma_z_h[i] = 0.0;
-    kappa_z_h[i] = 1.0;
-    pml_a_z_h[i] = 0.0;
-    pml_b_z_h[i] = 1.0;
-    pml_c_z_h[i] = 0.0;
-  }
+  //   double loss = (sigma_z_h[i] / kappa_z_h[i]) + pml_a_z_h[i];
+  //   pml_b_z_h[i] = exp(-loss * dt / epsilon_0);
+  //   double denom = sigma_z_h[i] * kappa_z_h[i] + pow(kappa_z_h[i], 2) * pml_a_z_h[i];
+  //   pml_c_z_h[i] = (denom != 0.0) ? sigma_z_h[i] * (pml_b_z_h[i] - 1.0) / denom : 0.0;
+  // }
 
   write_Vector_To_File(sigma_z_e, "../data/sigma_z_e_pml.txt");
   // write_Vector_To_File(kappa_z_e, "../data/kappa_z_e.txt");
@@ -354,10 +348,10 @@ void FDTD_1D::fdtd_1d_graded_Cpml() {
     // Update Electric Field
     for (int i = 1; i < nz; i++) {
       psiEx_z[i] = pml_b_z_e[i] * psiEx_z[i] + pml_c_z_e[i] * (Hy[i - 1] - Hy[i]) / delta_z;
-      psiEx_z[i] = 0;
-      kappa_z_e[i] = 1;
-      // Ex[i] = e1_coeff[i] * Ex[i] + e2_coeff[i] * ((Hy[i - 1] - Hy[i]) / (kappa_z_e[i] * delta_z) + psiEx_z[i]);
-      Ex[i] = e1_coeff[i] * Ex[i]  + (e2_coeff[i]/delta_z) * (Hy[i - 1] - Hy[i]);
+      // psiEx_z[i] = 0;
+      // kappa_z_e[i] = 1;
+      Ex[i] = e1_coeff[i] * Ex[i] + e2_coeff[i] * ((Hy[i - 1] - Hy[i]) / (kappa_z_e[i] * delta_z) + psiEx_z[i]);
+      // Ex[i] = e1_coeff[i] * Ex[i]  + (e2_coeff[i]/delta_z) * (Hy[i - 1] - Hy[i]);
     }
 
     // Add source
@@ -366,10 +360,10 @@ void FDTD_1D::fdtd_1d_graded_Cpml() {
     // Update Magnetic Field
     for (int i = 0; i < nz - 1; i++) {
       psiHy_z[i] = pml_b_z_h[i] * psiHy_z[i] + pml_c_z_h[i] * (Ex[i] - Ex[i + 1]) / delta_z;
-      psiHy_z[i] = 0;
-      kappa_z_h[i] = 1;
-      // Hy[i] = h1_coeff[i] * Hy[i] + h2_coeff[i] * ((Ex[i] - Ex[i + 1]) / (kappa_z_h[i] * delta_z) + psiHy_z[i]);
-      Hy[i] = h1_coeff[i] * Hy[i] +  (h2_coeff[i]/delta_z) * (Ex[i] - Ex[i + 1]);
+      // psiHy_z[i] = 0;
+      // kappa_z_h[i] = 1;
+      Hy[i] = h1_coeff[i] * Hy[i] + h2_coeff[i] * ((Ex[i] - Ex[i + 1]) / (kappa_z_h[i] * delta_z) + psiHy_z[i]);
+      // Hy[i] = h1_coeff[i] * Hy[i] +  (h2_coeff[i]/delta_z) * (Ex[i] - Ex[i + 1]);
     }
 
     // Save output

@@ -1,7 +1,7 @@
 {
   "frequency" : 3e9,
-  "domain_x": [-10,10],
-  "source":"gaussian", 
+  "domain_x": [-1,1],
+  "source":"sin", 
   "bandwidth": 5,
   "tau":3,
   "source_position":[0],
