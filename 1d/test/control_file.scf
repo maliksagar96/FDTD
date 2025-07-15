@@ -1,0 +1,12 @@
+{
+  "frequency" : 3e9,
+  "domain_x": [-1,1],
+  "source":"gaussian", 
+  "bandwidth": 5,
+  "tau":3,
+  "source_position":[0],
+  "CFL" : 1,
+  
+  "data_capture_interval": 5,
+  "iterations":600
+}

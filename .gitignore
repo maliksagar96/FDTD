@@ -9,3 +9,11 @@
 2d/*mp4
 2d/build
 2d/data/*txt
+
+1d_PML/build/
+1d_PML/data/*mp4
+1d_PML/data/*/
+1d_PML/html
+1d_PML/latex
+
+main_with_CPML*
