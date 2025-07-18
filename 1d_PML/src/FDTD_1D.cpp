@@ -75,7 +75,7 @@ void FDTD_1D::print_initial_state() {
 void FDTD_1D::set_spacing() {
   delta_z = c0 / (10 * frequency);  
   double wavelength = c0 / frequency;
-  pml_layers =  int(3*wavelength / delta_z);  
+  pml_layers =  2*int(wavelength / delta_z);  
   // pml_layers = 25;  
   nz = int((domain[1] - domain[0]) / delta_z) + 2 * pml_layers;
   cout << "nz: " << nz << endl;
@@ -111,7 +111,6 @@ void FDTD_1D::set_fields() {
   h2_coeff.resize(nz, 0);
 }
 
-
 void FDTD_1D::setup_source_function() {
   source_x = pml_layers + int((source_position - domain[0]) / delta_z);
 
@@ -119,11 +118,21 @@ void FDTD_1D::setup_source_function() {
     source_function = [this](int t) {
       return exp(-0.5 * pow((t * dt - tau) / spread, 2));
     };
-  } else if (source_type == "sin") {
+  }
+  
+  else if (source_type == "sin") {
     source_function = [this](int t) {
       return sin(2 * M_PI * frequency * t * dt);
     };
-  } else {
+  }
+  
+  else if(source_type == "gaussian_sin") {
+    source_function = [this](int t) {
+      return sin(2 * M_PI * frequency * t * dt) * exp(-0.5 * pow((t * dt - tau) / spread, 2));
+    };
+  }
+  
+  else {
     cerr << "Unknown source type: " << source_type << endl;
     exit(1);
   }
@@ -150,7 +159,6 @@ void FDTD_1D::set_sigma_graded() {
   for (int i = 0; i < nz - 1; i++) {
     sigma_z_h[i] = (mu_0 / epsilon_0) * 0.5 * (sigma_z_e[i] + sigma_z_e[i + 1]);
   }
-
 
   write_Vector_To_File(sigma_z_e, "../data/sigma_z_e_graded.txt");
   write_Vector_To_File(sigma_z_h, "../data/sigma_z_h_graded.txt");

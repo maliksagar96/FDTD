@@ -7,5 +7,5 @@ cd ../test/
 cd ../data
 python3 field_plotter.py
 vlc Ex_field_movie.mp4&
-sleep 5
+sleep 20
 powershell.exe Stop-Process -Name vlc -Force
