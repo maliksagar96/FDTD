@@ -1,19 +1,5 @@
-1d/data/*mp4
-1d/data/*/
-*.pdf
-1d/html
-1d/latex
-2d/data/*mp4
-2d/data/*/
-2d/data/*/*
-2d/*mp4
-2d/build
-2d/data/*txt
+*png
+*jpg
+*out
+*mp4
 
-1d_PML/build/
-1d_PML/data/*mp4
-1d_PML/data/*/
-1d_PML/html
-1d_PML/latex
-
-main_with_CPML*

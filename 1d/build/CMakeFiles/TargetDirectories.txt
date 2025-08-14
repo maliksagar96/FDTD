@@ -1,3 +1,0 @@
-/home/sagarmalik/Documents/git/FDTD/1d/build/CMakeFiles/fdtd_1d_simulation.dir
-/home/sagarmalik/Documents/git/FDTD/1d/build/CMakeFiles/edit_cache.dir
-/home/sagarmalik/Documents/git/FDTD/1d/build/CMakeFiles/rebuild_cache.dir
