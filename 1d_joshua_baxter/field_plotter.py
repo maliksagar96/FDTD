@@ -49,7 +49,7 @@ with Pool() as pool:
 
 # Create movie
 images = [imageio.imread(img_path) for img_path in image_paths]
-imageio.mimsave("Ex_field_movie.mp4", images, fps=20)
+imageio.mimsave("Ex_field_movie.mp4", images, fps=10)
 
 # Cleanup
 for img_file in image_paths:
