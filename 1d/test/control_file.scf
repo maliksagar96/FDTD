@@ -1,0 +1,24 @@
+{
+  "simulation": {
+    "simulation_size": 2.0e-5,
+    "frequency": 1.93414489032258e14,
+    "cells_per_wavelength": 100,
+    "CFL": 1.0,
+		"iterations":19000,
+		"data_capture_interval":100,
+    "simulation_time": 1.0e-12
+  },
+  "pml": {
+    "pml_size": 10,
+    "m": 3.0,
+    "a_max": 0.05,
+    "kappa_max": 5.0
+  },
+  "source": {
+    "source_position": 10,
+    "pulse_width": 1.0e-14,
+    "pulse_delay": 4.0e-14,
+    "amplitude": 1.0
+  }
+}
+
