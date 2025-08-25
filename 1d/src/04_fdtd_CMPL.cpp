@@ -134,13 +134,13 @@ int main() {
     vector<double> h_coeff2(N_space_cells, 1.0);
 
     for (int i = 0; i < N_space_cells; i++) {
-        denominator[i]  = EPSILON_0 * eps[i] / dt + sigma[i] / 2.0;
-        e_coeff1[i]     = (EPSILON_0 * eps[i] / dt - sigma[i] / 2.0) / denominator[i];
-        e_coeff2[i]     = 1.0 / denominator[i];
+			denominator[i]  = EPSILON_0 * eps[i] / dt + sigma[i] / 2.0;
+			e_coeff1[i]     = (EPSILON_0 * eps[i] / dt - sigma[i] / 2.0) / denominator[i];
+			e_coeff2[i]     = 1.0 / denominator[i];
 
-        denominator_h[i]= MU_0 / dt + sigma_h[i] / 2.0;
-        h_coeff1[i]     = (MU_0 / dt - sigma_h[i] / 2.0) / denominator_h[i];
-        h_coeff2[i]     = 1.0 / denominator_h[i];
+			denominator_h[i]= MU_0 / dt + sigma_h[i] / 2.0;
+			h_coeff1[i]     = (MU_0 / dt - sigma_h[i] / 2.0) / denominator_h[i];
+			h_coeff2[i]     = 1.0 / denominator_h[i];
     }
 
     // Source setup

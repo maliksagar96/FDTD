@@ -1,0 +1,6 @@
+{
+  "frequency":1e9,
+  "Iterations":2000,
+  "data_capture_interval":20,
+  "pml_size":250
+}
