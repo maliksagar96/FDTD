@@ -38,8 +38,21 @@ out = cv2.VideoWriter(video_name, cv2.VideoWriter_fourcc(*'mp4v'), fps, (frame_w
 with open("control_file.scf", "r") as file:
     data = json.load(file)
 
+c0 = 2.99792458e8
+
 Iterations = data["Iterations"]
 data_capture_interval = data["data_capture_interval"]
+frequency = data["frequency"]
+cells_per_wavelength = data["cells_per_wavelength"]
+wavelength = c0/frequency
+dx = wavelength/cells_per_wavelength
+pml_size = data["pml_size"]
+pml_width = pml_size * dx
+vmap = np.zeros(2)
+vmap[0] = data["cmap"][0]
+vmap[1] = data["cmap"][1]
+
+
 
 # --- Generate frames ---
 for t in tqdm(range(0, Iterations, data_capture_interval), desc=f"{field_name}_movie"):
@@ -50,9 +63,20 @@ for t in tqdm(range(0, Iterations, data_capture_interval), desc=f"{field_name}_m
 
     arr = np.loadtxt(filepath)
 
+    Ny, Nx = arr.shape  # note: imshow expects arr[y, x]
     fig, ax = plt.subplots(figsize=(6,6))
     # im = ax.imshow(arr, cmap="rainbow", origin="lower")
-    im = ax.imshow(arr, cmap="rainbow", vmin=vmin, vmax=vmax, origin="lower")
+    im = ax.imshow(arr, cmap="rainbow", vmin=vmap[0], vmax=vmap[1], origin="lower")
+
+    # Bottom strip
+    ax.axhspan(0, pml_size, color="black", alpha=0.1)
+    # Top strip
+    ax.axhspan(Ny - pml_size, Ny, color="black", alpha=0.1)
+    # Left strip
+    ax.axvspan(0, pml_size, color="black", alpha=0.1)
+    # Right strip
+    ax.axvspan(Nx - pml_size, Nx, color="black", alpha=0.1)
+
     ax.set_title(f"{field_name} field snapshot (t={t})")
     ax.set_xlabel("x index")
     ax.set_ylabel("y index")
