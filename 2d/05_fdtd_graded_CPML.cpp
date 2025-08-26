@@ -35,16 +35,92 @@ vector<double> Ca_x,Cb_x, Ca_y,Cb_y;
 
 int Nx, Ny, pml_size;
 
-vector<double> kappa_x, kappa_y, a_x_pml, b_x_pml, a_y_pml, b_y_pml, sigma_x_pml, sigma_y_pml;
+vector<double> sigma_x_r_pml, sigma_x_l_pml, sigma_y_t_pml, sigma_y_b_pml;
+vector<double> kappa_x_l, kappa_x_r, kappa_y_b, kappa_y_t;
+vector<double> inv_kappa_x, inv_kappa_y;
+vector<double> a_x_r, a_x_l, a_y_b, a_y_t, be_x_r, be_x_l, be_y_t, be_y_b, ce_x_r, ce_x_l, ce_y_t, ce_y_b;
+vector<double> Psi_Ey_x, Psi_Ex_y, Psi_Hz_y, Psi_Hz_x;
+
+std::queue<std::tuple<int, std::vector<double>, std::vector<double>, std::vector<double>>> write_queue;
+std::mutex queue_mutex;
+std::condition_variable cv;
+bool finished = false;
+
+void initPML() {
+  double m = 3;
+  double kappa_max = 5.0;   // you can tune
+  double a_max     = 0.25;  // you can tune
+
+  pml_cond_e = -(m + 1) * log(1e-10) * c0 * EPSILON_0 / (2 * pml_size * dx);
+
+  // ---------- Right (+x) PML ----------
+  for (int i = 0; i < pml_size; i++) {
+    double x = static_cast<double>(i) / pml_size;
+
+    sigma_x_r_pml[i] = pml_cond_e * pow(x, m);
+    kappa_x_r[i]     = 1.0 + (kappa_max - 1.0) * pow(x, m);
+    a_x_r[i]         = a_max * ((pml_size - i) / static_cast<double>(pml_size));
+
+    be_x_r[i] = exp(-(sigma_x_r_pml[i] / kappa_x_r[i] + a_x_r[i]) * dt / EPSILON_0);
+    ce_x_r[i] = sigma_x_r_pml[i] * (be_x_r[i] - 1.0) /
+                ((sigma_x_r_pml[i] + kappa_x_r[i] * a_x_r[i]) * kappa_x_r[i]);
+
+    inv_kappa_x[Nx - pml_size + i] = 1.0 / (kappa_x_r[i] * dx);
+  }
+
+  // ---------- Left (−x) PML ----------
+  for (int i = 0; i < pml_size; i++) {
+    double x = static_cast<double>(pml_size - i) / pml_size;
+
+    sigma_x_l_pml[i] = pml_cond_e * pow(x, m);
+    kappa_x_l[i]     = 1.0 + (kappa_max - 1.0) * pow(x, m);
+    a_x_l[i]         = a_max * (static_cast<double>(i) / pml_size);
+
+    be_x_l[i] = exp(-(sigma_x_l_pml[i] / kappa_x_l[i] + a_x_l[i]) * dt / EPSILON_0);
+    ce_x_l[i] = sigma_x_l_pml[i] * (be_x_l[i] - 1.0) /
+                ((sigma_x_l_pml[i] + kappa_x_l[i] * a_x_l[i]) * kappa_x_l[i]);
+
+    inv_kappa_x[i] = 1.0 / (kappa_x_l[i] * dx);
+  }
+
+  // ---------- Top (+y) PML ----------
+  for (int j = 0; j < pml_size; j++) {
+    double y = static_cast<double>(j) / pml_size;
+
+    sigma_y_t_pml[j] = pml_cond_e * pow(y, m);
+    kappa_y_t[j]     = 1.0 + (kappa_max - 1.0) * pow(y, m);
+    a_y_t[j]         = a_max * ((pml_size - j) / static_cast<double>(pml_size));
+
+    be_y_t[j] = exp(-(sigma_y_t_pml[j] / kappa_y_t[j] + a_y_t[j]) * dt / EPSILON_0);
+    ce_y_t[j] = sigma_y_t_pml[j] * (be_y_t[j] - 1.0) /
+                ((sigma_y_t_pml[j] + kappa_y_t[j] * a_y_t[j]) * kappa_y_t[j]);
+
+    inv_kappa_y[Ny - pml_size + j] = 1.0 / (kappa_y_t[j] * dy);
+  }
+
+  // ---------- Bottom (−y) PML ----------
+  for (int j = 0; j < pml_size; j++) {
+    double y = static_cast<double>(pml_size - j) / pml_size;
+
+    sigma_y_b_pml[j] = pml_cond_e * pow(y, m);
+    kappa_y_b[j]     = 1.0 + (kappa_max - 1.0) * pow(y, m);
+    a_y_b[j]         = a_max * (static_cast<double>(j) / pml_size);
+
+    be_y_b[j] = exp(-(sigma_y_b_pml[j] / kappa_y_b[j] + a_y_b[j]) * dt / EPSILON_0);
+    ce_y_b[j] = sigma_y_b_pml[j] * (be_y_b[j] - 1.0) /
+                  ((sigma_y_b_pml[j] + kappa_y_b[j] * a_y_b[j]) * kappa_y_b[j]);
+
+    inv_kappa_y[j] = 1.0 / (kappa_y_b[j] * dy);
+  }
+}
+
 
 void init(Json::Value root) {
   frequency = root["frequency"].asDouble();
   N_time_steps = root["Iterations"].asInt();
   data_capture_interval = root["data_capture_interval"].asInt();
   pml_size = root["pml_size"].asInt();
-  
-  
-  
+    
   center_wavelength = c0/frequency;
   simulation_size = 30 * center_wavelength;
   cells_per_wavelength = 50;
@@ -65,48 +141,48 @@ void init(Json::Value root) {
   sigma_h_x.resize(Nx, 0);
   sigma_h_y.resize(Ny, 0);
   
-
   Ca_x.resize(Nx, 1);
   Cb_x.resize(Nx, dt/EPSILON_0);
   Ca_y.resize(Ny, 1);
   Cb_y.resize(Ny, dt/EPSILON_0);
 
+  inv_kappa_x.resize(Nx, 1/dx);
+  inv_kappa_y.resize(Ny, 1/dy);
 
+  Psi_Ex_y.resize(Nx * Ny, 0.0);
+  Psi_Ey_x.resize(Nx * Ny, 0.0);
+  Psi_Hz_y.resize(Nx * Ny, 0.0);
+  Psi_Hz_x.resize(Nx * Ny, 0.0);
 
-  kappa_x.resize(pml_size, 0);
-  kappa_y.resize(pml_size, 0);
-  a_x_pml.resize(pml_size, 0);
-  a_y_pml.resize(pml_size, 0);
-  b_x_pml.resize(pml_size, 0);
-  b_y_pml.resize(pml_size, 0);
+  sigma_x_r_pml.resize(pml_size, 0);
+  sigma_x_l_pml.resize(pml_size, 0);
+  sigma_y_t_pml.resize(pml_size, 0);
+  sigma_y_b_pml.resize(pml_size, 0);
 
-  sigma_x_pml.resize(pml_size, 0);
-  sigma_y_pml.resize(pml_size, 0);
+  kappa_x_r.resize(pml_size, 0);
+  kappa_x_l.resize(pml_size, 0);
+  kappa_y_t.resize(pml_size, 0);
+  kappa_y_b.resize(pml_size, 0);
 
-
-  double m = 3;
-
-  pml_cond_e = -(m+1)*log(1e-10) * c0 * EPSILON_0 / (2 * pml_size * dx);
+  a_x_l.resize(pml_size, 0);
+  a_x_r.resize(pml_size, 0);
+  a_y_b.resize(pml_size, 0);
+  a_y_t.resize(pml_size, 0);
   
-  for(int i = vacuum_cells;i<Nx;i++) {
-    double x = (i-vacuum_cells)/Nx;
-    sigma_x[i] = pml_cond_e * pow(x, m);
-    sigma_y[i] = pml_cond_e * pow(x, m);
-  }
-  
+  be_x_r.resize(pml_size, 0);
+  be_x_l.resize(pml_size, 0);
+  be_y_b.resize(pml_size, 0);
+  be_y_t.resize(pml_size, 0);
 
-  for(int i = 0;i<pml_size;i++) {
+  ce_x_r.resize(pml_size, 0);
+  ce_x_l.resize(pml_size, 0);
+  ce_y_t.resize(pml_size, 0);
+  ce_y_b.resize(pml_size, 0);
 
-  }
-
+  initPML();
 
 }
 
-
-std::queue<std::tuple<int, std::vector<double>, std::vector<double>, std::vector<double>>> write_queue;
-std::mutex queue_mutex;
-std::condition_variable cv;
-bool finished = false;
 
 // Worker function
 void writer_thread_func() {
@@ -174,8 +250,8 @@ int main() {
   // double h_coeff = dt / (MU_0 * dx);
   // double e_coeff = (dt / (EPSILON_0 * dx));
 
-  double h_coeff = dt / (sqrt(MU_0*EPSILON_0) * dx);
-  double e_coeff = (dt / (sqrt(MU_0*EPSILON_0) * dx));
+  double h_coeff = dt / (sqrt(MU_0*EPSILON_0));
+  double e_coeff = (dt / (sqrt(MU_0*EPSILON_0)));
 
   ofstream sig_x("sigma_x.txt");
   ofstream sig_y("sigma_y.txt");
@@ -188,7 +264,7 @@ int main() {
     double s = sigma_x[i];
     double denom = 1.0 + (s * dt) / (2.0 * EPSILON_0);
     Ca_x[i] = (1.0 - (s * dt) / (2.0 * EPSILON_0)) / denom;
-    Cb_x[i] = (dt / (sqrt(MU_0*EPSILON_0)*dx)) / denom;
+    Cb_x[i] = (dt / (sqrt(MU_0*EPSILON_0))) / denom;
    
     sig_x<<sigma_x[i]<<endl;
     cax<<Ca_x[i]<<endl;
@@ -199,7 +275,7 @@ int main() {
     double s = sigma_y[j];
     double denom = 1.0 + (s * dt) / (2.0 * EPSILON_0);
     Ca_y[j] = (1.0 - (s * dt) / (2.0 * EPSILON_0)) / denom;
-    Cb_y[j] = (dt / (sqrt(MU_0*EPSILON_0)*dy)) / denom;        
+    Cb_y[j] = (dt / (sqrt(MU_0*EPSILON_0))) / denom;        
 
     sig_y<<sigma_y[j]<<endl;
     cay<<Ca_y[j]<<endl;
@@ -226,41 +302,87 @@ int main() {
   double t0 = 100 * dt;
   double tau = 20*dt;
 
-std::thread writer_thread(writer_thread_func);
+  std::thread writer_thread(writer_thread_func);
 
 // --- FDTD main loop ---
   for(int t = 0; t < N_time_steps; t++) {
 
-    // --- Update Hz ---
-    for(int i = 0; i < Nx-1; ++i) {
-      for(int j = 0; j < Ny-1; ++j) {
-        int idx = i*Ny + j;
-        Hz[idx] -= h_coeff * ((Ey[(i+1)*Ny + j] - Ey[idx]) - (Ex[i*Ny + j+1] - Ex[idx]));
-      }
-    }
-
-  // --- Update Ex ---
-    for(int i = 0; i < Nx; ++i) {
-      for(int j = 1; j < Ny; ++j) {
-        int idx = i*Ny + j;
-        Ex[idx] = Ca_x[i]*Ex[idx] + Cb_x[i] * (Hz[idx] - Hz[i*Ny + j-1]);
-        // Ex[idx] += e_coeff * (Hz[idx] - Hz[i*Ny + j-1]);
-      }
-    }
-
-    // --- Update Ey ---
-    for (int i = 1; i < Nx; ++i) {
-      for (int j = 0; j < Ny; ++j) {
+    for (int i = 0; i < Nx - 1; i++) {
+      for (int j = 0; j < Ny - 1; j++) {
         int idx = i * Ny + j;
-        Ey[idx] = Ca_y[j] * Ey[idx] -
-                  Cb_y[j] * (Hz[idx] - Hz[(i - 1) * Ny + j]);
+
+        double dEy_dx = inv_kappa_x[i] * (Ey[(i + 1) * Ny + j] - Ey[idx]);
+        double dEx_dy = inv_kappa_y[j] * (Ex[i * Ny + j + 1] - Ex[idx]);
+
+        // // Add Psi terms in PML regions
+        // if (i < pml_size)        dEy_dx += Psi_Hz_x[idx];        // left PML
+        // if (i >= Nx - pml_size)  dEy_dx += Psi_Hz_x[idx];        // right PML
+        // if (j < pml_size)        dEx_dy += Psi_Hz_y[idx];        // bottom PML
+        // if (j >= Ny - pml_size)  dEx_dy += Psi_Hz_y[idx];        // top PML
+
+        Hz[idx] -= h_coeff * (dEy_dx - dEx_dy);
       }
     }
+
+    // Bottom/top for Ex (y-PML)
+    for (int j = 0; j < pml_size; j++) {
+      for (int i = 0; i < Nx; i++) {
+        int idx = i * Ny + j;
+        Psi_Ex_y[idx] = be_y_b[j] * Psi_Ex_y[idx] +
+                        ce_y_b[j] * (Hz[idx] - Hz[i * Ny + j - 1]) / dy;
+      }
+      for (int i = 0; i < Nx; i++) {
+        int idx = i * Ny + (Ny - pml_size + j);
+        Psi_Ex_y[idx] = be_y_t[j] * Psi_Ex_y[idx] +
+                        ce_y_t[j] * (Hz[idx] - Hz[i * Ny + (Ny - pml_size + j - 1)]) / dy;
+      }
+    }
+
+    // --- Update Ex with CPML ---
+    for (int i = 0; i < Nx; i++) {
+      for (int j = 1; j < Ny; j++) {
+        int idx = i * Ny + j;
+
+        double curlHz = inv_kappa_y[j] * (Hz[idx] - Hz[i * Ny + j - 1]);
+
+        if (j < pml_size)        curlHz += Psi_Ex_y[idx];        // bottom
+        if (j >= Ny - pml_size)  curlHz += Psi_Ex_y[idx];        // top
+
+        Ex[idx] = Ca_x[i] * Ex[idx] + Cb_x[i] * curlHz;
+      }
+    }
+
+    // Left/right for Ey (x-PML)
+    for (int i = 0; i < pml_size; i++) {
+      for (int j = 0; j < Ny; j++) {
+        int idx = i * Ny + j;
+        Psi_Ey_x[idx] = be_x_l[i] * Psi_Ey_x[idx] +
+                        ce_x_l[i] * (Hz[idx] - Hz[(i - 1) * Ny + j]) / dx;
+      }
+      for (int j = 0; j < Ny; j++) {
+        int idx = (Nx - pml_size + i) * Ny + j;
+        Psi_Ey_x[idx] = be_x_r[i] * Psi_Ey_x[idx] +
+                        ce_x_r[i] * (Hz[idx] - Hz[(Nx - pml_size + i - 1) * Ny + j]) / dx;
+      }
+    }
+
+    // --- Update Ey with CPML ---
+    for (int i = 1; i < Nx; i++) {
+      for (int j = 0; j < Ny; j++) {
+        int idx = i * Ny + j;
+
+        double curlHz = inv_kappa_x[i] * (Hz[idx] - Hz[(i - 1) * Ny + j]);
+
+        if (i < pml_size)        curlHz += Psi_Ey_x[idx];        // left
+        if (i >= Nx - pml_size)  curlHz += Psi_Ey_x[idx];        // right
+
+        Ey[idx] = Ca_y[j] * Ey[idx] - Cb_y[j] * curlHz;
+      }
+    }  
 
     // --- Inject Gaussian hard source into Ey ---
     double time = t * dt;
     // double source = amplitude * exp(-pow((time - pulse_delay)/pulse_width, 2.0));
-    // double source = sin(omega * time);
     double source = sin(omega * time) * exp(-pow((time - t0)/tau, 2));
     Ey[src_i*Ny + src_j] += source;
 
