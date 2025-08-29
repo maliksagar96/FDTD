@@ -18,8 +18,8 @@ int main(int argc, char* argv[]) {
   file >> root;
 
   FDTD_2D solver(root);
-  solver.run_TEz();
-  // solver.run_TMz();
+  // solver.run_TEz();
+  solver.run_TMz();
   
   return 0;
 }

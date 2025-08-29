@@ -9,6 +9,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <json/json.h>
+#include <sstream>     
 
 
 FDTD_2D::FDTD_2D(const Json::Value& root) {
@@ -87,7 +88,7 @@ void FDTD_2D::compute_grid_parameters() {
   src_j = pml_size + int((source_point[1] - simulation_size[1])/dy);
 
   h_coeff = dt / (sqrt(MU_0*EPSILON_0));
-  e_coeff = (dt / (sqrt(MU_0*EPSILON_0)));
+  e_coeff = dt / (sqrt(MU_0*EPSILON_0));
   std::cout<<"Completed grid computation."<<std::endl;
 }
 
@@ -175,7 +176,7 @@ void FDTD_2D::init_PML() {
     double xh = (i + 0.5) / pml_size; // staggered for H
 
     // Electric
-    sigma_x_r_pml[i] = pml_cond_e * pow(x, m);
+    sigma_x_r_pml[i] = pml_cond_e * pow(x, m);    
     kappa_x_r[i]     = 1.0 + (kappa_max - 1.0) * pow(x, m);
     a_x_r[i]         = a_max * ((pml_size - i) / static_cast<double>(pml_size));
     be_x_r[i]        = exp(-(sigma_x_r_pml[i] / kappa_x_r[i] + a_x_r[i]) * dt / EPSILON_0);
@@ -184,7 +185,7 @@ void FDTD_2D::init_PML() {
     inv_kappa_x[Nx - pml_size + i] = 1.0 / (kappa_x_r[i] * dx);
 
     // Magnetic
-    sigma_x_r_h[i] = pml_cond_e * (MU_0/EPSILON_0)* pow(xh, m);
+    sigma_x_r_h[i] = pml_cond_e * pow(xh, m);    
     kappa_x_r_h[i] = 1.0 + (kappa_max - 1.0) * pow(xh, m);
     a_x_r_h[i]     = a_max * ((pml_size - i + 0.5) / static_cast<double>(pml_size));
     bh_x_r[i]      = exp(-(sigma_x_r_h[i] / kappa_x_r_h[i] + a_x_r_h[i]) * dt / EPSILON_0);
@@ -199,7 +200,7 @@ void FDTD_2D::init_PML() {
     double xh = (pml_size - i - 0.5) / pml_size;
 
     // Electric
-    sigma_x_l_pml[i] = pml_cond_e * pow(x, m);
+    sigma_x_l_pml[i] = pml_cond_e * pow(x, m);    
     kappa_x_l[i]     = 1.0 + (kappa_max - 1.0) * pow(x, m);
     a_x_l[i]         = a_max * (static_cast<double>(i) / pml_size);
     be_x_l[i]        = exp(-(sigma_x_l_pml[i] / kappa_x_l[i] + a_x_l[i]) * dt / EPSILON_0);
@@ -208,7 +209,7 @@ void FDTD_2D::init_PML() {
     inv_kappa_x[i]   = 1.0 / (kappa_x_l[i] * dx);
 
     // Magnetic
-    sigma_x_l_h[i] = pml_cond_e * (MU_0/EPSILON_0)* pow(xh, m);
+    sigma_x_l_h[i] = pml_cond_e *  pow(xh, m);    
     kappa_x_l_h[i] = 1.0 + (kappa_max - 1.0) * pow(xh, m);
     a_x_l_h[i]     = a_max * ((i + 0.5) / pml_size);
     bh_x_l[i]      = exp(-(sigma_x_l_h[i] / kappa_x_l_h[i] + a_x_l_h[i]) * dt / EPSILON_0);
@@ -223,7 +224,7 @@ void FDTD_2D::init_PML() {
     double yh = (j + 0.5) / pml_size;
 
     // Electric
-    sigma_y_t_pml[j] = pml_cond_e * pow(y, m);
+    sigma_y_t_pml[j] = pml_cond_e * pow(y, m);    
     kappa_y_t[j]     = 1.0 + (kappa_max - 1.0) * pow(y, m);
     a_y_t[j]         = a_max * ((pml_size - j) / static_cast<double>(pml_size));
     be_y_t[j]        = exp(-(sigma_y_t_pml[j] / kappa_y_t[j] + a_y_t[j]) * dt / EPSILON_0);
@@ -232,7 +233,7 @@ void FDTD_2D::init_PML() {
     inv_kappa_y[Ny - pml_size + j] = 1.0 / (kappa_y_t[j] * dy);
 
     // Magnetic
-    sigma_y_t_h[j] = pml_cond_e * (MU_0/EPSILON_0)* pow(yh, m);
+    sigma_y_t_h[j] = pml_cond_e * pow(yh, m);    
     kappa_y_t_h[j] = 1.0 + (kappa_max - 1.0) * pow(yh, m);
     a_y_t_h[j]     = a_max * ((pml_size - j + 0.5) / static_cast<double>(pml_size));
     bh_y_t[j]      = exp(-(sigma_y_t_h[j] / kappa_y_t_h[j] + a_y_t_h[j]) * dt / EPSILON_0);
@@ -247,7 +248,7 @@ void FDTD_2D::init_PML() {
     double yh = (pml_size - j - 0.5) / pml_size;
 
     // Electric
-    sigma_y_b_pml[j] = pml_cond_e * pow(y, m);
+    sigma_y_b_pml[j] = pml_cond_e * pow(y, m);    
     kappa_y_b[j]     = 1.0 + (kappa_max - 1.0) * pow(y, m);
     a_y_b[j]         = a_max * (static_cast<double>(j) / pml_size);
     be_y_b[j]        = exp(-(sigma_y_b_pml[j] / kappa_y_b[j] + a_y_b[j]) * dt / EPSILON_0);
@@ -256,7 +257,7 @@ void FDTD_2D::init_PML() {
     inv_kappa_y[j]   = 1.0 / (kappa_y_b[j] * dy);
 
     // Magnetic
-    sigma_y_b_h[j] = pml_cond_e * (MU_0/EPSILON_0) * pow(yh, m);
+    sigma_y_b_h[j] = pml_cond_e * (MU_0/EPSILON_0) * pow(yh, m);    
     kappa_y_b_h[j] = 1.0 + (kappa_max - 1.0) * pow(yh, m);
     a_y_b_h[j]     = a_max * ((j + 0.5) / pml_size);
     bh_y_b[j]      = exp(-(sigma_y_b_h[j] / kappa_y_b_h[j] + a_y_b_h[j]) * dt / EPSILON_0);
@@ -278,7 +279,6 @@ void FDTD_2D::init_PML() {
     Ca_y[j] = (1.0 - (s * dt) / (2.0 * EPSILON_0)) / denom;
     Cb_y[j] = (dt / (sqrt(MU_0*EPSILON_0))) / denom;        
   }
-
 
   for (int i = 0; i < Nx; ++i) {
     double s = sigma_x_h[i];  // magnetic conductivity in x-PML
@@ -351,6 +351,7 @@ void FDTD_2D::run_TEz() {
 
   // --- FDTD main loop ---
   for(int t = 0; t < N_time_steps; t++) {
+    
     for (int i = 0; i < Nx - 1; i++) {
       for (int j = 0; j < Ny - 1; j++) {
         int idx = i * Ny + j;
@@ -363,7 +364,7 @@ void FDTD_2D::run_TEz() {
     }
 
     // Bottom/top for Ex (y-PML)
-    for (int j = 0; j < pml_size; j++) {
+    for (int j = 1; j < pml_size; j++) {
       for (int i = 0; i < Nx; i++) {
         int idx = i * Ny + j;
         Psi_Ex_y[idx] = be_y_b[j] * Psi_Ex_y[idx] +
@@ -386,7 +387,7 @@ void FDTD_2D::run_TEz() {
     }
 
     // Left/right for Ey (x-PML)
-    for (int i = 0; i < pml_size; i++) {
+    for (int i = 1; i < pml_size; i++) {
       for (int j = 0; j < Ny; j++) {
         int idx = i * Ny + j;
         Psi_Ey_x[idx] = be_x_l[i] * Psi_Ey_x[idx] +
@@ -443,89 +444,3 @@ void FDTD_2D::run_TEz() {
 
 }
 
-void FDTD_2D::run_TMz() {
-  Publisher pub;
-  pub.start();
-
-  for (int t = 0; t < N_time_steps; t++) {
-    // --- Update Ez ---
-    for (int i = 0; i < Nx - 1; i++) {
-      for (int j = 0; j < Ny - 1; j++) {
-        int idx = i * Ny + j;
-
-        double dHy_dx = inv_kappa_x[i] * (Hy[(i + 1) * Ny + j] - Hy[idx]);
-        double dHx_dy = inv_kappa_y[j] * (Hx[i * Ny + j + 1] - Hx[idx]);
-
-        Ez[idx] += e_coeff * (dHy_dx - dHx_dy);
-      }
-    }
-
-    // --- PML updates for Hx ---
-    for (int j = 0; j < pml_size; j++) {
-      for (int i = 0; i < Nx; i++) {
-        int idx = i * Ny + j;
-        Psi_Hx_y[idx] = bh_y_b[j] * Psi_Hx_y[idx] +
-                        ch_y_b[j] * (Ez[i * Ny + j + 1] - Ez[idx]) / dy;
-      }
-      for (int i = 0; i < Nx; i++) {
-        int idx = i * Ny + (Ny - pml_size + j);
-        Psi_Hx_y[idx] = bh_y_t[j] * Psi_Hx_y[idx] +
-                        ch_y_t[j] * (Ez[i * Ny + (Ny - pml_size + j)] -
-                                     Ez[i * Ny + (Ny - pml_size + j - 1)]) / dy;
-      }
-    }
-
-    // --- Update Hx ---
-    for (int i = 0; i < Nx - 1; i++) {
-      for (int j = 0; j < Ny - 1; j++) {
-        int idx = i * Ny + j;
-        double curlEz = inv_kappa_x[i] * (Ez[(i + 1) * Ny + j] - Ez[idx]);
-        Hx[idx] = Da_x[i] * Hx[idx] - Db_x[i] * (curlEz + Psi_Hx_y[idx]);
-      }
-    }
-
-    // --- PML updates for Hy ---
-    for (int i = 0; i < pml_size; i++) {
-      for (int j = 0; j < Ny; j++) {
-        int idx = i * Ny + j;
-        Psi_Hy_x[idx] = bh_x_l[i] * Psi_Hy_x[idx] +
-                        ch_x_l[i] * (Ez[(i + 1) * Ny + j] - Ez[idx]) / dx;
-      }
-      for (int j = 0; j < Ny; j++) {
-        int idx = (Nx - pml_size + i) * Ny + j;
-        Psi_Hy_x[idx] = bh_x_r[i] * Psi_Hy_x[idx] +
-                        ch_x_r[i] * (Ez[(Nx - pml_size + i) * Ny + j] -
-                                     Ez[(Nx - pml_size + i - 1) * Ny + j]) / dx;
-      }
-    }
-
-    // --- Update Hy ---
-    for (int i = 0; i < Nx - 1; i++) {
-      for (int j = 0; j < Ny - 1; j++) {
-        int idx = i * Ny + j;
-        double curlEz = inv_kappa_y[j] * (Ez[i * Ny + j + 1] - Ez[idx]);
-        Hy[idx] = Da_y[j] * Hy[idx] + Db_y[j] * (curlEz + Psi_Hy_x[idx]);
-      }
-    }
-
-    // --- Inject Gaussian hard source into Ez ---
-    double time = t * dt;
-    Ez[src_i * Ny + src_j] += source(time);
-
-    std::cout << "Iteration: " << t << std::endl;
-
-    // --- Publish fields every few steps ---
-    if (t % data_capture_interval == 0) {
-      FieldFrame frame;
-      frame.t = t;
-      frame.Nx = Nx;
-      frame.Ny = Ny;
-      frame.fields["Ez"] = Ez;
-      frame.fields["Hx"] = Hx;
-      frame.fields["Hy"] = Hy;
-      pub.push(std::move(frame));
-    }
-  }
-
-  pub.stop();
-}
