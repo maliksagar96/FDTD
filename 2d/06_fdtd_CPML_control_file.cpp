@@ -71,7 +71,7 @@ bool finished = false;
 
 void initPML() {
 
-  double m = 4;
+  double m = 3;
   double kappa_max = 5.0;  
   double a_max     = 0.5;  
 
@@ -169,7 +169,7 @@ void init(Json::Value root) {
   dt = CFL / (c0 * sqrt((1.0/(dx*dx)) + (1.0/(dy*dy))));
   vacuum_cells_x = static_cast<int>(abs(simulation_size[2] - simulation_size[0]) / dx);
   vacuum_cells_y = static_cast<int>(abs(simulation_size[1] - simulation_size[3]) / dy);
-  pulse_width = dt*100;
+  pulse_width = dt/(2*M_PI*0.02);
   pulse_delay = 4*pulse_width;
   
   Nx = vacuum_cells_x + pml_size;
@@ -282,10 +282,7 @@ int main() {
 
   // Source position
   int src_i = pml_size + round((source_point[0] - simulation_size[0])/dx);
-  int src_j = pml_size + round((source_point[1] - simulation_size[1]) / dy);
-
-  // double h_coeff = dt / (MU_0 * dx);
-  // double e_coeff = (dt / (EPSILON_0 * dx));
+  int src_j = pml_size + round((source_point[1] - simulation_size[1])/dy);
 
   double h_coeff = dt / (sqrt(MU_0*EPSILON_0));
   double e_coeff = (dt / (sqrt(MU_0*EPSILON_0)));
@@ -372,13 +369,8 @@ int main() {
     for (int i = 0; i < Nx; i++) {
       for (int j = 1; j < Ny; j++) {
         int idx = i * Ny + j;
-
-        double curlHz = inv_kappa_y[j] * (Hz[idx] - Hz[i * Ny + j - 1]);
-
-        if (j < pml_size)        curlHz += Psi_Ex_y[idx];        // bottom
-        if (j >= Ny - pml_size)  curlHz += Psi_Ex_y[idx];        // top
-
-        Ex[idx] = Ca_x[i] * Ex[idx] + Cb_x[i] * curlHz;
+        double curlHz = inv_kappa_y[j] * (Hz[idx] - Hz[i * Ny + j - 1]);        
+        Ex[idx] = Ca_x[i] * Ex[idx] + Cb_x[i] * (curlHz + Psi_Ex_y[idx]);
       }
     }
 
@@ -400,13 +392,8 @@ int main() {
     for (int i = 1; i < Nx; i++) {
       for (int j = 0; j < Ny; j++) {
         int idx = i * Ny + j;
-
-        double curlHz = inv_kappa_x[i] * (Hz[idx] - Hz[(i - 1) * Ny + j]);
-
-        if (i < pml_size)        curlHz += Psi_Ey_x[idx];        // left
-        if (i >= Nx - pml_size)  curlHz += Psi_Ey_x[idx];        // right
-
-        Ey[idx] = Ca_y[j] * Ey[idx] - Cb_y[j] * curlHz;
+        double curlHz = inv_kappa_x[i] * (Hz[idx] - Hz[(i - 1) * Ny + j]);      
+        Ey[idx] = Ca_y[j] * Ey[idx] - Cb_y[j] * (curlHz + Psi_Ey_x[idx]);
       }
     }  
 
@@ -414,8 +401,8 @@ int main() {
     double time = t * dt;
     // double source = amplitude * exp(-pow((time - pulse_delay)/pulse_width, 2.0));
     double source = sin(omega * time) * exp(-pow((time - t0)/tau, 2));
-    // double source = sin(omega * time);
-    Ey[src_i*Ny + src_j] += source;
+    // Ey[src_i*Ny + src_j] = source;
+    Hz[src_i*Ny + src_j] += source;
 
     cout << "Iteration: " << t << endl;
 

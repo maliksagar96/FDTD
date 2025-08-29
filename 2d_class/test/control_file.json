@@ -8,5 +8,6 @@
   "amplitude":1,
   "CFL":0.75,
   "pml_size": 100,
+  "source_type":"gaussian",
   "cmap":[-0.01, 0.01]
 }
