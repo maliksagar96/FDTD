@@ -16,7 +16,7 @@
 // Class Declaration
 // =========================
 class FDTD_2D {
-public:
+  public:
     // Constructor / Destructor
     FDTD_2D(const Json::Value&);
     ~FDTD_2D();
@@ -32,7 +32,7 @@ public:
     void run_TEz();
     void run_TMz();
 
-private:
+  private:
     // --- Physical constants ---
     double EPSILON_0;
     double MU_0;

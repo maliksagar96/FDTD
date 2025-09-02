@@ -61,6 +61,7 @@ for t in tqdm(range(0, Iterations, data_capture_interval), desc=f"{field_name}_m
     continue
 
   arr = np.loadtxt(filepath)
+  arr = arr.T
   Ny, Nx = arr.shape  # imshow expects arr[y, x]
 
   fig, ax = plt.subplots(figsize=(6, 6))

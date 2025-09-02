@@ -11,7 +11,6 @@
 #include <json/json.h>
 #include <sstream>     
 
-
 FDTD_2D::FDTD_2D(const Json::Value& root) {
   read_json(root);
   compute_grid_parameters();
@@ -21,7 +20,6 @@ FDTD_2D::FDTD_2D(const Json::Value& root) {
 }
 
 FDTD_2D::~FDTD_2D() = default;
-
 
 void FDTD_2D::read_json(const Json::Value& root) {
 
@@ -257,7 +255,7 @@ void FDTD_2D::init_PML() {
     inv_kappa_y[j]   = 1.0 / (kappa_y_b[j] * dy);
 
     // Magnetic
-    sigma_y_b_h[j] = pml_cond_e * (MU_0/EPSILON_0) * pow(yh, m);    
+    sigma_y_b_h[j] = pml_cond_e * pow(yh, m);    
     kappa_y_b_h[j] = 1.0 + (kappa_max - 1.0) * pow(yh, m);
     a_y_b_h[j]     = a_max * ((j + 0.5) / pml_size);
     bh_y_b[j]      = exp(-(sigma_y_b_h[j] / kappa_y_b_h[j] + a_y_b_h[j]) * dt / EPSILON_0);
@@ -443,4 +441,89 @@ void FDTD_2D::run_TEz() {
   writer_thread.join();
 
 }
+
+
+/*********************************TMz mode*********************************/
+void FDTD_2D::run_TMz() {
+
+  // --- FDTD main loop ---
+  for(int t = 0; t < N_time_steps; t++) {
+
+    for (int i = 0; i < Nx - 1; i++) {
+      for (int j = 0; j < Ny - 1; j++) {
+        int idx = i * Ny + j;
+
+        double dHy_dx = inv_kappa_x[i] * (Hy[(i + 1) * Ny + j] - Hy[idx]);
+        double dHx_dy = inv_kappa_y[j] * (Hx[i * Ny + j + 1] - Hx[idx]);
+
+        Ez[idx] += e_coeff * (dHy_dx - dHx_dy);
+      }
+    }
+
+    // Bottom/top for Hx_y (y-PML)
+    for (int j = 1; j < pml_size; j++) {
+      for (int i = 0; i < Nx; i++) {
+        int idx = i * Ny + j;
+        Psi_Hx_y[idx] = bh_y_b[j] * Psi_Hx_y[idx] +
+                        ch_y_b[j] * (Ez[idx] - Ez[i * Ny + j - 1]) / dy;
+      }
+      for (int i = 0; i < Nx; i++) {
+        int idx = i * Ny + (Ny - pml_size + j);
+        Psi_Hx_y[idx] = bh_y_t[j] * Psi_Hx_y[idx] +
+                        ch_y_t[j] * (Ez[idx] - Ez[i * Ny + (Ny - pml_size + j - 1)]) / dy;
+      }
+    }
+
+    // --- Update Hx with CPML ---
+    for (int i = 0; i < Nx; i++) {
+      for (int j = 1; j < Ny; j++) {
+        int idx = i * Ny + j;
+        double curlEz = inv_kappa_y[j] * (Ez[idx] - Ez[i * Ny + j - 1]);        
+        Hx[idx] = Da_x[i] * Hx[idx] - Db_x[i] * (curlEz + Psi_Hx_y[idx]);
+      }
+    }
+
+    // Left/right for Ey (x-PML)
+    for (int i = 1; i < pml_size; i++) {
+      for (int j = 0; j < Ny; j++) {
+        int idx = i * Ny + j;
+        Psi_Hy_x[idx] = bh_x_l[i] * Psi_Hy_x[idx] +
+                        ch_x_l[i] * (Ez[idx] - Ez[(i - 1) * Ny + j]) / dx;
+      }
+      for (int j = 0; j < Ny; j++) {
+        int idx = (Nx - pml_size + i) * Ny + j;
+        Psi_Hy_x[idx] = bh_x_r[i] * Psi_Hy_x[idx] +
+                        ch_x_r[i] * (Ez[idx] - Ez[(Nx - pml_size + i - 1) * Ny + j]) / dx;
+      }
+    }
+
+    // --- Update Hy with CPML ---
+    for (int i = 1; i < Nx; i++) {
+      for (int j = 0; j < Ny; j++) {
+        int idx = i * Ny + j;
+        double curlEz = inv_kappa_x[i] * (Ez[idx] - Ez[(i - 1) * Ny + j]);      
+        Hy[idx] = Da_y[j] * Hy[idx] + Db_y[j] * (curlEz + Psi_Hy_x[idx]);
+      }
+    }  
+
+    // --- Inject Gaussian hard source into Ey ---
+    double time = t * dt;  
+    Ez[src_i*Ny + src_j] += source(time);
+    
+    std::cout << "Iteration: " << t << std::endl;
+
+    // --- Capture data asynchronously ---
+    if(t % data_capture_interval == 0) {      
+      std::ofstream Ez_out("data/Ez/Ez" + std::to_string(t) + ".txt");
+      for(int i = 0;i<Nx;i++) {
+        for(int j = 0;j<Ny;j++) {
+          Ez_out<<Ez[i*Ny + j]<<" ";
+        }
+        Ez_out<<std::endl;
+      }
+      Ez_out.close();
+    }
+  }
+}
+
 
