@@ -1,3 +1,4 @@
+#include <vtkWriter.h>
 #include <Mesh2D.h>
 #include <TopoDS.hxx>           
 #include <TopoDS_Shape.hxx>
@@ -14,6 +15,8 @@
 #include <vector>
 #include <fstream>
 #include <iostream>
+#include <unordered_map>
+#include <array>
 
 
 Mesh2D::Mesh2D(const std::string& stepFile, double cellSize)
@@ -53,42 +56,88 @@ void Mesh2D::generateUniformGrid() {
   double xmin = -2.0, xmax = 2.0;
   double ymin = -2.0, ymax = 2.0;
 
-  for (double x = xmin; x < xmax; x += cellSize_) {
-    for (double y = ymin; y < ymax; y += cellSize_) {
-      Cell c;
-      c.x_min = x;
-      c.x_max = x + cellSize_;
-      c.y_min = y;
-      c.y_max = y + cellSize_;
-      c.center = gp_Pnt(x + cellSize_/2, y + cellSize_/2, 0);
-      cells_.push_back(c);
+  int id = 0;
+  for (double x = xmin; x <= xmax; x += cellSize_) {
+    for (double y = ymin; y <= ymax; y += cellSize_) {
+      Node n(x, y, id);   // construct node
+      nodes_.push_back(n);
+      id++;
     }
   }
+
+  // optional: later we can set left/right/top/bottom by indexing
 }
 
 // ------------------- Filter cells outside geometry -------------------
-void Mesh2D::filterCellsOutsideGeometry() {
-  std::vector<Cell> outsideCells;
-  for (const auto& c : cells_) {
-    if (!isPointInside(c.center)) {
-      outsideCells.push_back(c);
+void Mesh2D::filterNodesOutsideGeometry() {
+  std::vector<Node> insideNodes;
+  int id = 0;
+
+  for (auto &n : nodes_) {
+    gp_Pnt p(n.x, n.y, 0);  // make a point from node coords
+    if (!isPointInside(p)) {
+      n.nodeID = id;        // assign new sequential ID
+      n.nodePoint = p;      // store gp_Pnt
+      insideNodes.push_back(n);
+      id++;
     }
   }
-  cells_ = outsideCells;
+
+  nodes_ = insideNodes;  // keep only valid nodes
 }
 
-// ------------------- Save mesh to TXT -------------------
-void Mesh2D::saveMeshToTXT(const std::string& filename) const {
-  std::ofstream fout(filename);
-  if (!fout.is_open()) {
-    std::cerr << "Cannot open file to write: " << filename << std::endl;
-    return;
+void Mesh2D::linkNodeNeighbors() {
+  // assume uniform grid spacing = cellSize_
+  std::unordered_map<std::string, Node*> lookup;
+
+  // build quick lookup by (x,y) string key
+  for (auto &n : nodes_) {
+    std::string key = std::to_string(n.x) + "_" + std::to_string(n.y);
+    lookup[key] = &n;
   }
 
-  for (const auto& c : cells_) {
-    fout << c.center.X() << " " << c.center.Y() << " " << c.center.Z() << "\n";
-  }
+  for (auto &n : nodes_) {
+    // generate neighbor keys
+    std::string leftKey   = std::to_string(n.x - cellSize_) + "_" + std::to_string(n.y);
+    std::string rightKey  = std::to_string(n.x + cellSize_) + "_" + std::to_string(n.y);
+    std::string topKey    = std::to_string(n.x) + "_" + std::to_string(n.y + cellSize_);
+    std::string bottomKey = std::to_string(n.x) + "_" + std::to_string(n.y - cellSize_);
 
-  fout.close();
-  std::cout << "Mesh saved to " << filename << " with " << cells_.size() << " points." << std::endl;
+    // assign neighbors if they exist
+    n.left   = lookup.count(leftKey)   ? lookup[leftKey]   : nullptr;
+    n.right  = lookup.count(rightKey)  ? lookup[rightKey]  : nullptr;
+    n.top    = lookup.count(topKey)    ? lookup[topKey]    : nullptr;
+    n.bottom = lookup.count(bottomKey) ? lookup[bottomKey] : nullptr;
+  }
 }
+
+void Mesh2D::saveMeshToVTK(const std::string& filename) const {
+  VTKQuadWriter vtk2elements;
+  std::vector<double> coords;
+  std::vector<int> connectivity;
+
+  // Export node coordinates
+  for (auto &n : nodes_) {
+    coords.push_back(n.x);
+    coords.push_back(n.y);
+    coords.push_back(0.0);
+  }
+
+  // Build quad connectivity
+  for (auto &n : nodes_) {
+     if (n.right && n.top && n.top->right) {
+      
+      connectivity.push_back(n.nodeID);
+      connectivity.push_back(n.right->nodeID);
+      connectivity.push_back(n.top->right->nodeID);
+      connectivity.push_back(n.top->nodeID);
+      
+    }
+  }
+
+  vtk2elements.set_points(coords);
+  vtk2elements.set_cells(connectivity);
+  vtk2elements.write_vtk(filename);
+}
+
+

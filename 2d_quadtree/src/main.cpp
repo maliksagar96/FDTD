@@ -5,8 +5,10 @@ int main() {
   if (!mesh.readSTEP()) return 1;
 
   mesh.generateUniformGrid();
-  mesh.filterCellsOutsideGeometry();
-  mesh.saveMeshToTXT("mesh.txt");
+  mesh.filterNodesOutsideGeometry();
+  mesh.linkNodeNeighbors();
+  mesh.saveMeshToVTK("mesh.vtk");
+  
 
   return 0;
 }
