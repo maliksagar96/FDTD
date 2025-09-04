@@ -18,7 +18,6 @@
 #include <unordered_map>
 #include <array>
 
-
 Mesh2D::Mesh2D(const std::string& stepFile, double cellSize)
   : stepFile_(stepFile), cellSize_(cellSize) {}
 
@@ -111,16 +110,56 @@ void Mesh2D::linkNodeNeighbors() {
   }
 }
 
+void generateEdges() {
+  std::unordered_map<long long, Edge*> edgeMap;
+  auto makeKey = [](int a, int b) {
+    if (a > b) std::swap(a, b);
+    return (static_cast<long long>(a) << 32) | b;
+  };
+
+  int id_x = 0, id_y = 0;   // separate IDs for Hx and Hy
+
+  for (auto &n : nodes_) {
+    // horizontal edge (Hx) - vertical in space
+    if (n.top) {
+      long long key = makeKey(n.nodeID, n.top->nodeID);
+      if (!edgeMap.count(key)) {
+        Edge *e = new Edge{id_x, &n, n.top, false, 0.0};
+        edges_y.push_back(e);   // vertical edges are Hy
+        edgeMap[key] = e;
+        id_y++;
+      }
+      n.Hx_top = edgeMap[key];
+      n.top->Hx_bottom = edgeMap[key];
+    }
+
+    // vertical edge (Hy) - horizontal in space
+    if (n.right) {
+      long long key = makeKey(n.nodeID, n.right->nodeID);
+      if (!edgeMap.count(key)) {
+        Edge *e = new Edge{id_y, &n, n.right, true, 0.0};
+        edges_x.push_back(e);   // horizontal edges are Hx
+        edgeMap[key] = e;
+        id_x++;
+      }
+      n.Hy_right = edgeMap[key];
+      n.right->Hy_left = edgeMap[key];
+    }
+  }
+}
+
 void Mesh2D::saveMeshToVTK(const std::string& filename) const {
   VTKQuadWriter vtk2elements;
   std::vector<double> coords;
   std::vector<int> connectivity;
+  std::vector<double> Ez_scalar;
 
   // Export node coordinates
   for (auto &n : nodes_) {
     coords.push_back(n.x);
     coords.push_back(n.y);
     coords.push_back(0.0);
+    Ez_scalar.push_back(n.Ez);
   }
 
   // Build quad connectivity

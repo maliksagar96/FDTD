@@ -31,6 +31,7 @@ class FDTD_2D {
     // Main solver loop
     void run_TEz();
     void run_TMz();
+    void noPML_TMz();
 
   private:
     // --- Physical constants ---

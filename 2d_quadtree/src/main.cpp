@@ -9,6 +9,7 @@ int main() {
   mesh.linkNodeNeighbors();
   mesh.saveMeshToVTK("mesh.vtk");
   
+  
 
   return 0;
 }

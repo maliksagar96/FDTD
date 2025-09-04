@@ -328,19 +328,19 @@ void FDTD_2D::writer_thread_func() {
 }
 
 void FDTD_2D::setup_source() {
-    if (source_type == "sin") {
-        source_fn = [=](double t){ return amplitude * sin(omega * t); };
-    }
-    else if (source_type == "gaussian") {
-        source_fn = [=](double t){ return amplitude * exp(-pow((t - pulse_delay)/pulse_width, 2.0)); };
-    }
-    else if (source_type == "gaussian_sin") {
-        source_fn = [=](double t){ return amplitude * sin(omega * t) * exp(-pow((t - pulse_delay)/pulse_width, 2.0)); };
-    }
+  if (source_type == "sin") {
+    source_fn = [=](double t){ return amplitude * sin(omega * t); };
+  }
+  else if (source_type == "gaussian") {
+    source_fn = [=](double t){ return amplitude * exp(-pow((t - pulse_delay)/pulse_width, 2.0)); };
+  }
+  else if (source_type == "gaussian_sin") {
+    source_fn = [=](double t){ return amplitude * sin(omega * t) * exp(-pow((t - pulse_delay)/pulse_width, 2.0)); };
+  }
 }
 
 double FDTD_2D::source(double time) {
-    return source_fn(time);
+  return source_fn(time);
 }
 
 void FDTD_2D::run_TEz() {
@@ -442,7 +442,6 @@ void FDTD_2D::run_TEz() {
 
 }
 
-
 /*********************************TMz mode*********************************/
 void FDTD_2D::run_TMz() {
 
@@ -525,5 +524,60 @@ void FDTD_2D::run_TMz() {
     }
   }
 }
+
+void FDTD_2D::noPML_TMz() {
+
+  // --- FDTD main loop ---
+  for(int t = 0; t < N_time_steps; t++) {
+
+    for (int i = 0; i < Nx - 1; i++) {
+      for (int j = 0; j < Ny - 1; j++) {
+        int idx = i * Ny + j;
+
+        double dHy_dx = inv_kappa_x[i] * (Hy[(i + 1) * Ny + j] - Hy[idx]);
+        double dHx_dy = inv_kappa_y[j] * (Hx[i * Ny + j + 1] - Hx[idx]);
+
+        Ez[idx] += e_coeff * (dHy_dx - dHx_dy);
+      }
+    }
+    
+    // --- Update Hx with CPML ---
+    for (int i = 0; i < Nx; i++) {
+      for (int j = 1; j < Ny; j++) {
+        int idx = i * Ny + j;
+        double curlEz = inv_kappa_y[j] * (Ez[idx] - Ez[i * Ny + j - 1]);        
+        Hx[idx] = Hx[idx] - Db_x[i] * (curlEz);
+      }
+    }
+    
+    // --- Update Hy with CPML ---
+    for (int i = 1; i < Nx; i++) {
+      for (int j = 0; j < Ny; j++) {
+        int idx = i * Ny + j;
+        double curlEz = inv_kappa_x[i] * (Ez[idx] - Ez[(i - 1) * Ny + j]);      
+        Hy[idx] = Hy[idx] + Db_y[j] * (curlEz);
+      }
+    }  
+
+    // --- Inject Gaussian hard source into Ey ---
+    double time = t * dt;  
+    Ez[src_i*Ny + src_j] += source(time);
+    
+    std::cout << "Iteration: " << t << std::endl;
+
+    // --- Capture data asynchronously ---
+    if(t % data_capture_interval == 0) {      
+      std::ofstream Ez_out("data/Ez/Ez" + std::to_string(t) + ".txt");
+      for(int i = 0;i<Nx;i++) {
+        for(int j = 0;j<Ny;j++) {
+          Ez_out<<Ez[i*Ny + j]<<" ";
+        }
+        Ez_out<<std::endl;
+      }
+      Ez_out.close();
+    }
+  }
+}
+
 
 

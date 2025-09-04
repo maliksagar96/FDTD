@@ -19,7 +19,8 @@ int main(int argc, char* argv[]) {
 
   FDTD_2D solver(root);
   // solver.run_TEz();
-  solver.run_TMz();
+  // solver.run_TMz();
+  solver.noPML_TMz();
   
   return 0;
 }
