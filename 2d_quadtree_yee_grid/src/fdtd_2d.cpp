@@ -1,5 +1,4 @@
 #include <fdtd_2d.h>
-#include <publish.h>
 #include <iostream>
 #include <vector>
 #include <cmath>
@@ -11,6 +10,8 @@
 #include <json/json.h>
 #include <sstream>     
 #include <Mesh2D.h>
+#include <vtkWriter.h>
+
 
 FDTD_2D::FDTD_2D(const Json::Value& root) {
   read_json(root);
@@ -89,6 +90,12 @@ void FDTD_2D::compute_grid_parameters() {
   h_coeff = dt / (sqrt(MU_0*EPSILON_0));
   e_coeff = dt / (sqrt(MU_0*EPSILON_0));
   std::cout<<"Completed grid computation."<<std::endl;
+}
+
+void FDTD_2D::get_fields(std::vector<EzNode> Ez_nodes_, std::vector<HxNode> Hx_nodes_, std::vector<HyNode> Hy_nodes_) {
+  Ez_nodes = Ez_nodes_;
+  Hx_nodes = Hx_nodes_;
+  Hy_nodes = Hy_nodes_;
 }
 
 void FDTD_2D::initialize_fields() {
@@ -398,58 +405,144 @@ void FDTD_2D::noPML_TMz() {
   }
 }
 
-/******************************* MESH UPDATE EQUATION *******************************/
-void FDTD_2D::TMz_mesh_update(std::vector<Nodes> nodes_, std::vector<Edge> edges_x, std::vector<Edge> edges_y) {
+void FDTD_2D::saveMeshToVTK(const std::string& type, std::string& filename) const {
+  VTKQuadWriter vtk2elements;
+  std::vector<double> coords;
+  std::vector<int> connectivity;
+  std::vector<double> field;
 
-  std::vector<double> Ez(nodes_.size(), 0);
-  std::vector<double> Hx(edges_.size(), 0);
-  std::vector<double> Hy(edges_.size(), 0);
+  // pick the right container
+  const std::vector<EzNode> *Ez = nullptr;
+  const std::vector<HxNode> *Hx = nullptr;
+  const std::vector<HyNode> *Hy = nullptr;
 
-  // --- FDTD main loop ---
-  for(int t = 0; t < N_time_steps; t++) {
+  if (type == "Ez") Ez = &Ez_nodes;
+  else if (type == "Hx") Hx = &Hx_nodes;
+  else if (type == "Hy") Hy = &Hy_nodes;
+  else {
+    throw std::runtime_error("Unknown type: " + type);
+  }
 
-    for (int nodeID = 0; nodeID < nodes_.size(); nodeID++) {
-      double dHy_dx = (Hy(right to Ez) - Hy(left to Ez))/dx;
-      double dHx_dy = (Hx[top to Ez] - Hx[bottom to Ez])/dy;
-      Ez[nodeID] += e_coeff * (dHy_dx - dHx_dy);      
+  // ---- Ez export ----
+  if (Ez) {
+    for (auto &n : *Ez) {
+      coords.push_back(n.x);
+      coords.push_back(n.y);
+      coords.push_back(0.0);
+      field.push_back(n.fieldValue);
     }
-    
-    // --- Update Hx with CPML ---
-    for (int x_edge_ID = 0; x_edge_ID < Hx_edges.size(); x_edge_ID++) {      
-        double curlEz = (Ez[nodeID left of Hx] - Ez[nodeID right of Hx])/dy;        
-        Hx[x_edge_ID] -= h_coeff * (curlEz);
-      }
-    
-    
-    // --- Update Hy with CPML ---
-    for (int y_edge_ID = 1; x_edge_ID < Nx; x_edge_ID++) {
-          
-      double curlEz = (Ez[top of Hy] - Ez[bottom to Hy])/dx;      
-      Hy[x_edge_ID] += h_coeff * (curlEz);
-    
-    }  
 
-    // --- Inject Gaussian hard source into Ey ---
-    double time = t * dt;  
-    Ez[source_ID] += source(time);
-    
-    std::cout << "Iteration: " << t << std::endl;    
-
-    if(t % data_capture_interval == 0) {      
-      std::ofstream Ez_out("data/Ez/Ez" + std::to_string(t) + ".txt");
-      for(int i = 0;i<Nx;i++) {
-        for(int j = 0;j<Ny;j++) {
-          Ez_out<<Ez[i*Ny + j]<<" ";
-        }
-        Ez_out<<std::endl;
+    for (auto &n : *Ez) {
+      if (n.right && n.top && n.top->right) {
+        connectivity.push_back(n.nodeID);
+        connectivity.push_back(n.right->nodeID);
+        connectivity.push_back(n.top->right->nodeID);
+        connectivity.push_back(n.top->nodeID);
       }
-      Ez_out.close();
     }
   }
 
+  // ---- Hx export ----
+  if (Hx) {
+    for (auto &n : *Hx) {
+      coords.push_back(n.x);
+      coords.push_back(n.y);
+      coords.push_back(0.0);
+      field.push_back(n.fieldValue);
+    }
+
+    for (auto &n : *Hx) {
+      if (n.right && n.top && n.top->right) {
+        connectivity.push_back(n.nodeID);
+        connectivity.push_back(n.right->nodeID);
+        connectivity.push_back(n.top->right->nodeID);
+        connectivity.push_back(n.top->nodeID);
+      }
+    }
+    // usually Hx are stored as points, so maybe no quads?
+  }
+
+  // ---- Hy export ----
+  if (Hy) {
+    for (auto &n : *Hy) {
+      coords.push_back(n.x);
+      coords.push_back(n.y);
+      coords.push_back(0.0);
+      field.push_back(n.fieldValue);
+    }
+
+    for (auto &n : *Hy) {
+      if (n.right && n.top && n.top->right) {
+        connectivity.push_back(n.nodeID);
+        connectivity.push_back(n.right->nodeID);
+        connectivity.push_back(n.top->right->nodeID);
+        connectivity.push_back(n.top->nodeID);
+      }
+    }
+    // same as Hx, no quads unless you want them
+  }
+
+  vtk2elements.set_points(coords);
+  vtk2elements.set_cells(connectivity);
+  vtk2elements.write_vtk(filename);
 }
 
+/******************************* MESH UPDATE EQUATION *******************************/
+void FDTD_2D::TMz_mesh_update() {
+  
+  std::cout<<"TMz using VTK mesh"<<std::endl;
+  std::cout<<"Ez_nodes.size() = "<<Ez_nodes.size()<<std::endl;
+  std::cout<<"Hx_nodes.size() = "<<Hx_nodes.size()<<std::endl;
+  std::cout<<"Hy_nodes.size() = "<<Hy_nodes.size()<<std::endl;
 
+  std::cout<<"N_time_steps = "<<N_time_steps<<std::endl;
 
+  dx = 0.05;
+  dy = 0.05;
 
+  CFL = 0.5;  
+
+  dt = dt = CFL / (c0 * sqrt((1.0/(dx*dx)) + (1.0/(dy*dy))));;
+
+h_coeff = dt / (sqrt(MU_0*EPSILON_0));
+e_coeff = dt / (sqrt(MU_0*EPSILON_0));
+
+  for (int t = 0; t < N_time_steps; t++) {
+    // --- Update Ez ---
+    for (int Ez_node_ID = 0; Ez_node_ID < Ez_nodes.size(); Ez_node_ID++) {
+      double dHy_dx = (Ez_nodes[Ez_node_ID].hy_right->fieldValue -
+                       Ez_nodes[Ez_node_ID].hy_left->fieldValue) / dx;
+      double dHx_dy = (Ez_nodes[Ez_node_ID].hx_top->fieldValue -
+                       Ez_nodes[Ez_node_ID].hx_bottom->fieldValue) / dy;
+
+      Ez_nodes[Ez_node_ID].fieldValue += e_coeff * (dHy_dx - dHx_dy);
+    }
+
+    // --- Update Hx ---
+    for (int Hx_node_ID = 0; Hx_node_ID < Hx_nodes.size(); Hx_node_ID++) {
+      double curlEz = (Hx_nodes[Hx_node_ID].ez_top->fieldValue -
+                       Hx_nodes[Hx_node_ID].ez_bottom->fieldValue) / dy;
+      Hx_nodes[Hx_node_ID].fieldValue -= h_coeff * curlEz;
+    }
+
+    // --- Update Hy ---
+    for (int Hy_node_ID = 0; Hy_node_ID < Hy_nodes.size(); Hy_node_ID++) {
+      double curlEz = (Hy_nodes[Hy_node_ID].ez_right->fieldValue -
+                       Hy_nodes[Hy_node_ID].ez_left->fieldValue) / dx;
+      Hy_nodes[Hy_node_ID].fieldValue += h_coeff * curlEz;
+    }
+
+    // --- Source injection ---
+    double time = t * dt;
+    int source_ID  = 100;
+
+    Ez_nodes[source_ID].fieldValue += source(time);
+    std::cout<<"Time step = "<<t<<std::endl;
+    if(t%10 == 0) {
+      std::string filename = "data/Ez/Ez_" + std::to_string(t) + ".vtk";
+      saveMeshToVTK("Ez", filename);
+    }      
+  }
+
+}
 

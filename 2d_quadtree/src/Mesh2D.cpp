@@ -59,12 +59,10 @@ void Mesh2D::generateUniformGrid() {
   for (double x = xmin; x <= xmax; x += cellSize_) {
     for (double y = ymin; y <= ymax; y += cellSize_) {
       Node n(x, y, id);   // construct node
-      nodes_.push_back(n);
+      Ez_nodes.push_back(n);
       id++;
     }
   }
-
-  // optional: later we can set left/right/top/bottom by indexing
 }
 
 // ------------------- Filter cells outside geometry -------------------
@@ -72,17 +70,22 @@ void Mesh2D::filterNodesOutsideGeometry() {
   std::vector<Node> insideNodes;
   int id = 0;
 
-  for (auto &n : nodes_) {
+  for (auto &n : Ez_nodes) {
     gp_Pnt p(n.x, n.y, 0);  // make a point from node coords
-    if (!isPointInside(p)) {
+    if (isPointInside(p)) {
       n.nodeID = id;        // assign new sequential ID
       n.nodePoint = p;      // store gp_Pnt
       insideNodes.push_back(n);
+      Node Hx(n.x-cellSize_/2, n.y, id);
+      Node Hy(n.x, n.y -cellSize_/2, id);
+      Hx_nodes.push_back(Hx);
+      Hy_nodes.push_back(Hy);
       id++;
     }
   }
 
-  nodes_ = insideNodes;  // keep only valid nodes
+  Ez_nodes = insideNodes;  // keep only valid nodes
+
 }
 
 void Mesh2D::linkNodeNeighbors() {
@@ -90,12 +93,12 @@ void Mesh2D::linkNodeNeighbors() {
   std::unordered_map<std::string, Node*> lookup;
 
   // build quick lookup by (x,y) string key
-  for (auto &n : nodes_) {
+  for (auto &n : Ez_nodes) {
     std::string key = std::to_string(n.x) + "_" + std::to_string(n.y);
     lookup[key] = &n;
   }
 
-  for (auto &n : nodes_) {
+  for (auto &n : Ez_nodes) {
     // generate neighbor keys
     std::string leftKey   = std::to_string(n.x - cellSize_) + "_" + std::to_string(n.y);
     std::string rightKey  = std::to_string(n.x + cellSize_) + "_" + std::to_string(n.y);
@@ -110,44 +113,6 @@ void Mesh2D::linkNodeNeighbors() {
   }
 }
 
-void generateEdges() {
-  std::unordered_map<long long, Edge*> edgeMap;
-  auto makeKey = [](int a, int b) {
-    if (a > b) std::swap(a, b);
-    return (static_cast<long long>(a) << 32) | b;
-  };
-
-  int id_x = 0, id_y = 0;   // separate IDs for Hx and Hy
-
-  for (auto &n : nodes_) {
-    // horizontal edge (Hx) - vertical in space
-    if (n.top) {
-      long long key = makeKey(n.nodeID, n.top->nodeID);
-      if (!edgeMap.count(key)) {
-        Edge *e = new Edge{id_x, &n, n.top, false, 0.0};
-        edges_y.push_back(e);   // vertical edges are Hy
-        edgeMap[key] = e;
-        id_y++;
-      }
-      n.Hx_top = edgeMap[key];
-      n.top->Hx_bottom = edgeMap[key];
-    }
-
-    // vertical edge (Hy) - horizontal in space
-    if (n.right) {
-      long long key = makeKey(n.nodeID, n.right->nodeID);
-      if (!edgeMap.count(key)) {
-        Edge *e = new Edge{id_y, &n, n.right, true, 0.0};
-        edges_x.push_back(e);   // horizontal edges are Hx
-        edgeMap[key] = e;
-        id_x++;
-      }
-      n.Hy_right = edgeMap[key];
-      n.right->Hy_left = edgeMap[key];
-    }
-  }
-}
-
 void Mesh2D::saveMeshToVTK(const std::string& filename) const {
   VTKQuadWriter vtk2elements;
   std::vector<double> coords;
@@ -155,15 +120,47 @@ void Mesh2D::saveMeshToVTK(const std::string& filename) const {
   std::vector<double> Ez_scalar;
 
   // Export node coordinates
-  for (auto &n : nodes_) {
+  for (auto &n : Ez_nodes) {
     coords.push_back(n.x);
     coords.push_back(n.y);
     coords.push_back(0.0);
-    Ez_scalar.push_back(n.Ez);
+    Ez_scalar.push_back(n.fieldValue);
   }
 
   // Build quad connectivity
-  for (auto &n : nodes_) {
+  for (auto &n : Ez_nodes) {
+     if (n.right && n.top && n.top->right) {
+      
+      connectivity.push_back(n.nodeID);
+      connectivity.push_back(n.right->nodeID);
+      connectivity.push_back(n.top->right->nodeID);
+      connectivity.push_back(n.top->nodeID);
+      
+    }
+  }
+
+  vtk2elements.set_points(coords);
+  vtk2elements.set_cells(connectivity);
+  vtk2elements.write_vtk(filename);
+}
+
+
+void Mesh2D::save_Hx_MeshToVTK(const std::string& filename) const {
+  VTKQuadWriter vtk2elements;
+  std::vector<double> coords;
+  std::vector<int> connectivity;
+  std::vector<double> Hx_scalar;
+
+  // Export node coordinates
+  for (auto &n : Hx_nodes) {
+    coords.push_back(n.x);
+    coords.push_back(n.y);
+    coords.push_back(0.0);
+    Hx_scalar.push_back(n.fieldValue);
+  }
+
+  // Build quad connectivity
+  for (auto &n : Hx_nodes) {
      if (n.right && n.top && n.top->right) {
       
       connectivity.push_back(n.nodeID);

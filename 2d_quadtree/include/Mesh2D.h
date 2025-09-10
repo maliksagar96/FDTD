@@ -7,32 +7,19 @@
 #include <vector>
 #include <string>
 
-struct Node;
-
-struct Edge {
-  int id;
-  Node *n1, *n2;   // endpoints
-  bool isX;        // true if horizontal (Hx), false if vertical (Hy)
-  double H;
-};
-
 struct Node {
   double x, y;
-  double Ez_fieldValue;
+  double fieldValue;
   int nodeID;
   gp_Pnt nodePoint;
   Node *left, *right, *top, *bottom;
-
-  Edge *Hx_top, *Hx_bottom;
-  Edge *Hy_left, *Hy_right; 
-
-  
+  Node *Hx_left, *Hx_right, *Hy_top, *Hy_bottom;
 
   Node(double x_, double y_, int id)
-    : x(x_), y(y_), nodeID(id), Ez_fieldValue(0), nodePoint(x_, y_, 0.0),
+    : x(x_), y(y_), nodeID(id), fieldValue(0), nodePoint(x_, y_, 0.0),
       left(nullptr), right(nullptr), top(nullptr), bottom(nullptr),
-      Hx_top(nullptr), Hx_bottom(nullptr),
-      Hy_left(nullptr), Hy_right(nullptr) {}
+      Hx_left(nullptr), Hx_right(nullptr),
+      Hy_top(nullptr), Hy_bottom(nullptr) {}
 };
 
 
@@ -43,19 +30,22 @@ class Mesh2D {
     void generateUniformGrid();                   // create uniform grid of nodes
     void filterNodesOutsideGeometry();            // keep only inside nodes
     void linkNodeNeighbors();                     // set left/right/top/bottom
-    void saveMeshToTXT(const std::string&) const; // save node coords
+    
     void saveMeshToVTK(const std::string& filename) const;
-    const std::vector<Node>& getNodes() const { return nodes_; }
-    const std::vector<Edge>& getEdges() const { return edges_; }
+    void save_Hx_MeshToVTK(const std::string& filename) const;
+    const std::vector<Node>& get_Ez_Nodes() const { return Ez_nodes; }
+    const std::vector<Node>& get_Hx_Nodes() const { return Hx_nodes; }
+    const std::vector<Node>& get_Hy_Nodes() const { return Hy_nodes; }
+    
     void generateEdges();
 
   private:
     std::string stepFile_;
     double cellSize_;
     TopoDS_Face face_;                            // assume single face for 2D
-    std::vector<Node> nodes_;
-    std::vector<Edge*> edges_x; // all Hx edges
-    std::vector<Edge*> edges_y; // all Hy edges
+    std::vector<Node> Ez_nodes;
+    std::vector<Node> Hx_nodes;
+    std::vector<Node> Hy_nodes;
 
     bool isPointInside(const gp_Pnt& p) const;    // helper for inside/outside check
 };
