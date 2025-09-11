@@ -336,6 +336,7 @@ void FDTD_2D::writer_thread_func() {
 }
 
 void FDTD_2D::setup_source() {
+  source_type = "sin";
   if (source_type == "sin") {
     source_fn = [=](double t){ return amplitude * sin(omega * t); };
   }
@@ -406,85 +407,96 @@ void FDTD_2D::noPML_TMz() {
 }
 
 void FDTD_2D::saveMeshToVTK(const std::string& type, std::string& filename) const {
-  VTKQuadWriter vtk2elements;
+VTKQuadWriter vtk2elements;
   std::vector<double> coords;
   std::vector<int> connectivity;
   std::vector<double> field;
+  std::string fieldName;
 
-  // pick the right container
-  const std::vector<EzNode> *Ez = nullptr;
-  const std::vector<HxNode> *Hx = nullptr;
-  const std::vector<HyNode> *Hy = nullptr;
+  if (type == "Ez") {
+    fieldName = "Ez";
+    // ---- Ez export ----
+    for (int i = 0; i < Ez_domain_size; i++) {
+      const auto &n = Ez_nodes[i];
+      coords.push_back(n.x);
+      coords.push_back(n.y);
+      coords.push_back(0.0);
+      
+    }
 
-  if (type == "Ez") Ez = &Ez_nodes;
-  else if (type == "Hx") Hx = &Hx_nodes;
-  else if (type == "Hy") Hy = &Hy_nodes;
+    for (int i = 0; i < Ez_domain_size; i++) {
+      const auto &n = Ez_nodes[i];
+      if (n.right && n.top && n.top->right) {
+        connectivity.push_back(n.nodeID);
+        connectivity.push_back(n.right->nodeID);
+        connectivity.push_back(n.top->right->nodeID);
+        connectivity.push_back(n.top->nodeID);
+        field.push_back(n.fieldValue);
+      }
+    }
+  }
+  else if (type == "Hx") {
+    fieldName = "Hx";
+    // ---- Hx export ----
+    for (int i = 0; i < Hx_domain_size; i++) {
+      const auto &n = Hx_nodes[i];
+      coords.push_back(n.x);
+      coords.push_back(n.y);
+      coords.push_back(0.0);
+      
+    }
+
+    for (int i = 0; i < Hx_domain_size; i++) {
+      const auto &n = Hx_nodes[i];
+      if (n.right && n.top && n.top->right) {
+        connectivity.push_back(n.nodeID);
+        connectivity.push_back(n.right->nodeID);
+        connectivity.push_back(n.top->right->nodeID);
+        connectivity.push_back(n.top->nodeID);
+        field.push_back(n.fieldValue);
+      }
+    }
+    // often Hx are exported as points, so you can drop the connectivity part if not needed
+  }
+  else if (type == "Hy") {
+    fieldName = "Hy";
+    // ---- Hy export ----
+    for (int i = 0; i < Hy_domain_size; i++) {
+      const auto &n = Hy_nodes[i];
+      coords.push_back(n.x);
+      coords.push_back(n.y);
+      coords.push_back(0.0);
+      
+    }
+
+    for (int i = 0; i < Hy_domain_size; i++) {
+      const auto &n = Hy_nodes[i];
+      if (n.right && n.top && n.top->right) {
+        connectivity.push_back(n.nodeID);
+        connectivity.push_back(n.right->nodeID);
+        connectivity.push_back(n.top->right->nodeID);
+        connectivity.push_back(n.top->nodeID);
+        field.push_back(n.fieldValue);
+      }
+    }
+    // same note as Hx
+  }
   else {
     throw std::runtime_error("Unknown type: " + type);
   }
 
-  // ---- Ez export ----
-  if (Ez) {
-    for (auto &n : *Ez) {
-      coords.push_back(n.x);
-      coords.push_back(n.y);
-      coords.push_back(0.0);
-      field.push_back(n.fieldValue);
-    }
-
-    for (auto &n : *Ez) {
-      if (n.right && n.top && n.top->right) {
-        connectivity.push_back(n.nodeID);
-        connectivity.push_back(n.right->nodeID);
-        connectivity.push_back(n.top->right->nodeID);
-        connectivity.push_back(n.top->nodeID);
-      }
-    }
-  }
-
-  // ---- Hx export ----
-  if (Hx) {
-    for (auto &n : *Hx) {
-      coords.push_back(n.x);
-      coords.push_back(n.y);
-      coords.push_back(0.0);
-      field.push_back(n.fieldValue);
-    }
-
-    for (auto &n : *Hx) {
-      if (n.right && n.top && n.top->right) {
-        connectivity.push_back(n.nodeID);
-        connectivity.push_back(n.right->nodeID);
-        connectivity.push_back(n.top->right->nodeID);
-        connectivity.push_back(n.top->nodeID);
-      }
-    }
-    // usually Hx are stored as points, so maybe no quads?
-  }
-
-  // ---- Hy export ----
-  if (Hy) {
-    for (auto &n : *Hy) {
-      coords.push_back(n.x);
-      coords.push_back(n.y);
-      coords.push_back(0.0);
-      field.push_back(n.fieldValue);
-    }
-
-    for (auto &n : *Hy) {
-      if (n.right && n.top && n.top->right) {
-        connectivity.push_back(n.nodeID);
-        connectivity.push_back(n.right->nodeID);
-        connectivity.push_back(n.top->right->nodeID);
-        connectivity.push_back(n.top->nodeID);
-      }
-    }
-    // same as Hx, no quads unless you want them
-  }
-
   vtk2elements.set_points(coords);
   vtk2elements.set_cells(connectivity);
+  vtk2elements.add_scalar(field, fieldName);
   vtk2elements.write_vtk(filename);
+
+}
+
+
+void FDTD_2D::set_domain_size(int Ez_domain_size_, int Hx_domain_size_, int Hy_domain_size_) {
+  Ez_domain_size = Ez_domain_size_;
+  Hx_domain_size = Hx_domain_size_;
+  Hy_domain_size = Hy_domain_size_;
 }
 
 /******************************* MESH UPDATE EQUATION *******************************/
@@ -494,41 +506,50 @@ void FDTD_2D::TMz_mesh_update() {
   std::cout<<"Ez_nodes.size() = "<<Ez_nodes.size()<<std::endl;
   std::cout<<"Hx_nodes.size() = "<<Hx_nodes.size()<<std::endl;
   std::cout<<"Hy_nodes.size() = "<<Hy_nodes.size()<<std::endl;
-
+  
+  std::cout<<"Ez_domain_size = "<<Ez_domain_size<<std::endl;
+  std::cout<<"Hx_domain_size = "<<Hx_domain_size<<std::endl;
+  std::cout<<"Hy_domain_size = "<<Hy_domain_size<<std::endl;
   std::cout<<"N_time_steps = "<<N_time_steps<<std::endl;
 
   dx = 0.05;
   dy = 0.05;
-
   CFL = 0.5;  
+  dt = dt = CFL / (c0 * sqrt((1.0/(dx*dx)) + (1.0/(dy*dy))));
 
-  dt = dt = CFL / (c0 * sqrt((1.0/(dx*dx)) + (1.0/(dy*dy))));;
-
-h_coeff = dt / (sqrt(MU_0*EPSILON_0));
-e_coeff = dt / (sqrt(MU_0*EPSILON_0));
+  h_coeff = dt / (sqrt(MU_0*EPSILON_0));
+  e_coeff = dt / (sqrt(MU_0*EPSILON_0));
 
   for (int t = 0; t < N_time_steps; t++) {
     // --- Update Ez ---
-    for (int Ez_node_ID = 0; Ez_node_ID < Ez_nodes.size(); Ez_node_ID++) {
-      double dHy_dx = (Ez_nodes[Ez_node_ID].hy_right->fieldValue -
-                       Ez_nodes[Ez_node_ID].hy_left->fieldValue) / dx;
-      double dHx_dy = (Ez_nodes[Ez_node_ID].hx_top->fieldValue -
-                       Ez_nodes[Ez_node_ID].hx_bottom->fieldValue) / dy;
+    for (int Ez_node_ID = 0; Ez_node_ID < Ez_domain_size; Ez_node_ID++) {
 
+      
+      double dHy_dx = (Ez_nodes[Ez_node_ID].hy_right->fieldValue - Ez_nodes[Ez_node_ID].hy_left->fieldValue) / dx;
+      double dHx_dy = (Ez_nodes[Ez_node_ID].hx_top->fieldValue - Ez_nodes[Ez_node_ID].hx_bottom->fieldValue) / dy;
       Ez_nodes[Ez_node_ID].fieldValue += e_coeff * (dHy_dx - dHx_dy);
     }
 
     // --- Update Hx ---
-    for (int Hx_node_ID = 0; Hx_node_ID < Hx_nodes.size(); Hx_node_ID++) {
-      double curlEz = (Hx_nodes[Hx_node_ID].ez_top->fieldValue -
-                       Hx_nodes[Hx_node_ID].ez_bottom->fieldValue) / dy;
+    for (int Hx_node_ID = 0; Hx_node_ID < Hx_domain_size; Hx_node_ID++) {
+
+      double curlEz = (Hx_nodes[Hx_node_ID].ez_top->fieldValue - Hx_nodes[Hx_node_ID].ez_bottom->fieldValue) / dy;
       Hx_nodes[Hx_node_ID].fieldValue -= h_coeff * curlEz;
     }
 
     // --- Update Hy ---
-    for (int Hy_node_ID = 0; Hy_node_ID < Hy_nodes.size(); Hy_node_ID++) {
-      double curlEz = (Hy_nodes[Hy_node_ID].ez_right->fieldValue -
-                       Hy_nodes[Hy_node_ID].ez_left->fieldValue) / dx;
+    for (int Hy_node_ID = 0; Hy_node_ID < Hy_domain_size; Hy_node_ID++) {
+      if(Hy_nodes[Hy_node_ID].ez_right == nullptr) {
+        std::cerr<<"Hy_nodes[Hy_node_ID].ez_right == nullptr"<<std::endl;
+        exit(1);
+      }
+
+      if(Hy_nodes[Hy_node_ID].ez_left == nullptr) {
+        std::cerr<<"Hy_nodes[Hy_node_ID].ez_left == nullptr"<<std::endl;
+        exit(1);
+      }
+
+      double curlEz = (Hy_nodes[Hy_node_ID].ez_right->fieldValue - Hy_nodes[Hy_node_ID].ez_left->fieldValue) / dx;
       Hy_nodes[Hy_node_ID].fieldValue += h_coeff * curlEz;
     }
 
@@ -536,13 +557,15 @@ e_coeff = dt / (sqrt(MU_0*EPSILON_0));
     double time = t * dt;
     int source_ID  = 100;
 
-    Ez_nodes[source_ID].fieldValue += source(time);
+    Ez_nodes[source_ID].fieldValue += source(time);    
+
+
     std::cout<<"Time step = "<<t<<std::endl;
     if(t%10 == 0) {
-      std::string filename = "data/Ez/Ez_" + std::to_string(t) + ".vtk";
-      saveMeshToVTK("Ez", filename);
+      std::string type = "Hy";
+      std::string filename = "data/" + type + "/" + type + "_" + std::to_string(t) + ".vtk";
+      saveMeshToVTK(type, filename);
     }      
   }
-
 }
 

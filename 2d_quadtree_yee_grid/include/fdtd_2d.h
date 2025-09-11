@@ -33,8 +33,9 @@ class FDTD_2D {
     // Main solver loop
     void noPML_TMz();
     void TMz_mesh_update();  
+    void set_domain_size(int, int, int);
     void saveMeshToVTK(const std::string& type, std::string& filename) const;
-
+    
   private:
     // --- Physical constants ---
     double EPSILON_0;
@@ -119,7 +120,6 @@ class FDTD_2D {
     std::mutex queue_mutex;
     std::condition_variable cv;
     bool finished = false;
-
     void writer_thread_func();
     
     // --- Fields ---
@@ -133,10 +133,10 @@ class FDTD_2D {
     void setup_source();  
 
     //----------------------------------- Using the MESH2D library -----------------------------------//
-
     std::vector<EzNode> Ez_nodes;
     std::vector<HxNode> Hx_nodes;
     std::vector<HyNode> Hy_nodes;
+    int Ez_domain_size, Hx_domain_size, Hy_domain_size;
 
 };
 

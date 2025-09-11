@@ -1,0 +1,19 @@
+[ 20%] Linking CXX executable read_step
+[100%] Built target read_step
+[H[2J[3J[100%] Built target read_step
+Source_point = 0.05, source_point[1] = 0.05
+PML_size = 100
+************JSON Parameters***********************
+Frequency = 1e+10
+Iterations = 2000
+data_capture_interval = 20
+simulation_size = -0.2, -0.1, 0.2, 0.1
+source_point = 0.05, 0.05
+cells_per_wavelength = 50
+amplitude = 1
+CFL = 0.75
+pml_size = 100
+Reading JSON file completed.
+Completed grid computation.
+Initialised Fields
+Initialising PML

@@ -1,6 +1,7 @@
 {
+  "filename": "square_1m.STEP",
   "frequency":10e9,
-  "Iterations":2000,
+  "Iterations":4000,
   "data_capture_interval":20,
   "simulation_size":[-0.2,-0.1,0.2,0.1],
   "source_point":[0.05, 0.05],
