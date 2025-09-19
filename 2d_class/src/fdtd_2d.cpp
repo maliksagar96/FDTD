@@ -179,7 +179,7 @@ void FDTD_2D::init_PML() {
     a_x_r[i]         = a_max * ((pml_size - i) / static_cast<double>(pml_size));
     be_x_r[i]        = exp(-(sigma_x_r_pml[i] / kappa_x_r[i] + a_x_r[i]) * dt / EPSILON_0);
     ce_x_r[i]        = sigma_x_r_pml[i] * (be_x_r[i] - 1.0) /
-                      ((sigma_x_r_pml[i] + kappa_x_r[i] * a_x_r[i]) * kappa_x_r[i]);
+                      (sigma_x_r_pml[i] +  a_x_r[i] * kappa_x_r[i])/kappa_x_r[i];
     inv_kappa_x[Nx - pml_size + i] = 1.0 / (kappa_x_r[i] * dx);
 
     // Magnetic
@@ -188,7 +188,7 @@ void FDTD_2D::init_PML() {
     a_x_r_h[i]     = a_max * ((pml_size - i + 0.5) / static_cast<double>(pml_size));
     bh_x_r[i]      = exp(-(sigma_x_r_h[i] / kappa_x_r_h[i] + a_x_r_h[i]) * dt / EPSILON_0);
     ch_x_r[i]      = sigma_x_r_h[i] * (bh_x_r[i] - 1.0) /
-                    ((sigma_x_r_h[i] + kappa_x_r_h[i] * a_x_r_h[i]) * kappa_x_r_h[i]);
+                    (sigma_x_r_h[i] +  a_x_r_h[i] * kappa_x_r_h[i])/kappa_x_r_h[i];
     inv_kappa_h_x[Nx - pml_size + i] = 1.0 / (kappa_x_r_h[i] * dx);
   }
 
@@ -203,7 +203,7 @@ void FDTD_2D::init_PML() {
     a_x_l[i]         = a_max * (static_cast<double>(i) / pml_size);
     be_x_l[i]        = exp(-(sigma_x_l_pml[i] / kappa_x_l[i] + a_x_l[i]) * dt / EPSILON_0);
     ce_x_l[i]        = sigma_x_l_pml[i] * (be_x_l[i] - 1.0) /
-                      ((sigma_x_l_pml[i] + kappa_x_l[i] * a_x_l[i]) * kappa_x_l[i]);
+                      (sigma_x_l_pml[i] +a_x_l[i] * kappa_x_l[i])/ kappa_x_l[i] ;
     inv_kappa_x[i]   = 1.0 / (kappa_x_l[i] * dx);
 
     // Magnetic
@@ -212,7 +212,7 @@ void FDTD_2D::init_PML() {
     a_x_l_h[i]     = a_max * ((i + 0.5) / pml_size);
     bh_x_l[i]      = exp(-(sigma_x_l_h[i] / kappa_x_l_h[i] + a_x_l_h[i]) * dt / EPSILON_0);
     ch_x_l[i]      = sigma_x_l_h[i] * (bh_x_l[i] - 1.0) /
-                    ((sigma_x_l_h[i] + kappa_x_l_h[i] * a_x_l_h[i]) * kappa_x_l_h[i]);
+                    (sigma_x_l_h[i] +  a_x_l_h[i] * kappa_x_l_h[i])/kappa_x_l_h[i];
     inv_kappa_h_x[i] = 1.0 / (kappa_x_l_h[i] * dx);
   }
 
@@ -227,7 +227,7 @@ void FDTD_2D::init_PML() {
     a_y_t[j]         = a_max * ((pml_size - j) / static_cast<double>(pml_size));
     be_y_t[j]        = exp(-(sigma_y_t_pml[j] / kappa_y_t[j] + a_y_t[j]) * dt / EPSILON_0);
     ce_y_t[j]        = sigma_y_t_pml[j] * (be_y_t[j] - 1.0) /
-                      ((sigma_y_t_pml[j] + kappa_y_t[j] * a_y_t[j]) * kappa_y_t[j]);
+                      (sigma_y_t_pml[j] + a_y_t[j] * kappa_y_t[j])/kappa_y_t[j];
     inv_kappa_y[Ny - pml_size + j] = 1.0 / (kappa_y_t[j] * dy);
 
     // Magnetic
@@ -236,7 +236,7 @@ void FDTD_2D::init_PML() {
     a_y_t_h[j]     = a_max * ((pml_size - j + 0.5) / static_cast<double>(pml_size));
     bh_y_t[j]      = exp(-(sigma_y_t_h[j] / kappa_y_t_h[j] + a_y_t_h[j]) * dt / EPSILON_0);
     ch_y_t[j]      = sigma_y_t_h[j] * (bh_y_t[j] - 1.0) /
-                    ((sigma_y_t_h[j] + kappa_y_t_h[j] * a_y_t_h[j]) * kappa_y_t_h[j]);
+                    (sigma_y_t_h[j] + a_y_t_h[j] * kappa_y_t_h[j])/kappa_y_t_h[j];
     inv_kappa_h_y[Ny - pml_size + j] = 1.0 / (kappa_y_t_h[j] * dy);
   }
 
@@ -251,7 +251,7 @@ void FDTD_2D::init_PML() {
     a_y_b[j]         = a_max * (static_cast<double>(j) / pml_size);
     be_y_b[j]        = exp(-(sigma_y_b_pml[j] / kappa_y_b[j] + a_y_b[j]) * dt / EPSILON_0);
     ce_y_b[j]        = sigma_y_b_pml[j] * (be_y_b[j] - 1.0) /
-                      ((sigma_y_b_pml[j] + kappa_y_b[j] * a_y_b[j]) * kappa_y_b[j]);
+                      (sigma_y_b_pml[j] + a_y_b[j] * kappa_y_b[j])/kappa_y_b[j];
     inv_kappa_y[j]   = 1.0 / (kappa_y_b[j] * dy);
 
     // Magnetic
@@ -260,7 +260,7 @@ void FDTD_2D::init_PML() {
     a_y_b_h[j]     = a_max * ((j + 0.5) / pml_size);
     bh_y_b[j]      = exp(-(sigma_y_b_h[j] / kappa_y_b_h[j] + a_y_b_h[j]) * dt / EPSILON_0);
     ch_y_b[j]      = sigma_y_b_h[j] * (bh_y_b[j] - 1.0) /
-                    ((sigma_y_b_h[j] + kappa_y_b_h[j] * a_y_b_h[j]) * kappa_y_b_h[j]);
+                    (sigma_y_b_h[j] +  a_y_b_h[j] * kappa_y_b_h[j])/kappa_y_b_h[j];
     inv_kappa_h_y[j] = 1.0 / (kappa_y_b_h[j] * dy);
   }
 

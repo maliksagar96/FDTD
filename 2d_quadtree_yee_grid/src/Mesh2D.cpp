@@ -17,6 +17,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <array>
+#include <global_variables.h>
 
 Mesh2D::Mesh2D(const std::string& stepFile, double cellSize)
   : stepFile_(stepFile), cellSize_(cellSize) {}
@@ -52,8 +53,8 @@ bool Mesh2D::isPointInside(const gp_Pnt& p) const {
 
 // ------------------- Generate uniform grid -------------------
 void Mesh2D::generateUniformGrid() {
-  double xmin = -2.0, xmax = 2.0;
-  double ymin = -2.0, ymax = 2.0;
+  double xmin = simulation_size[0], xmax = simulation_size[2];
+  double ymin = simulation_size[1], ymax = simulation_size[3];
 
   int id = 0;
   for (double x = xmin; x <= xmax; x += cellSize_) {
@@ -80,7 +81,7 @@ void Mesh2D::filterNodesOutsideGeometry() {
   for (auto &n : Ez_nodes) {
     gp_Pnt p(n.x, n.y, 0);  
 
-    if (isPointInside(p)) {
+    if (!isPointInside(p)) {
       n.nodeID = id;        
       n.nodePoint = p;      
       outside_Ez_Nodes.push_back(n);            
@@ -92,7 +93,7 @@ void Mesh2D::filterNodesOutsideGeometry() {
   for (auto &n : Hx_nodes) {
     gp_Pnt p(n.x, n.y, 0);  
 
-    if (isPointInside(p)) {
+    if (!isPointInside(p)) {
       n.nodeID = id;        
       n.nodePoint = p;      
       outside_Hx_Nodes.push_back(n);            
@@ -104,7 +105,7 @@ void Mesh2D::filterNodesOutsideGeometry() {
   for (auto &n : Hy_nodes) {
     gp_Pnt p(n.x, n.y, 0);  
 
-    if (isPointInside(p)) {
+    if (!isPointInside(p)) {
       n.nodeID = id;        
       n.nodePoint = p;      
       outside_Hy_Nodes.push_back(n);            
@@ -120,31 +121,31 @@ void Mesh2D::filterNodesOutsideGeometry() {
 
 template <typename NodeType>
 void linkNeighbors(std::vector<NodeType> &nodes,
-                   std::unordered_map<std::string, NodeType*> &lookup,
+                   std::unordered_map<std::string, int> &lookup,
                    double cellSize) {
   auto makeKey = [](double x, double y) {
     return std::to_string(x) + "_" + std::to_string(y);
   };
 
-
-  // build lookup
-  for (auto &n : nodes) {
-    lookup[makeKey(n.x, n.y)] = &n;
+  // build lookup: key → index
+  for (int i = 0; i < (int)nodes.size(); i++) {
+    lookup[makeKey(nodes[i].x, nodes[i].y)] = i;
   }
 
   // assign neighbors
-  for (auto &n : nodes) {
-    n.left   = lookup.count(makeKey(n.x - cellSize, n.y)) ? lookup[makeKey(n.x - cellSize, n.y)] : nullptr;
-    n.right  = lookup.count(makeKey(n.x + cellSize, n.y)) ? lookup[makeKey(n.x + cellSize, n.y)] : nullptr;
-    n.top    = lookup.count(makeKey(n.x, n.y + cellSize)) ? lookup[makeKey(n.x, n.y + cellSize)] : nullptr;
-    n.bottom = lookup.count(makeKey(n.x, n.y - cellSize)) ? lookup[makeKey(n.x, n.y - cellSize)] : nullptr;
+  for (int i = 0; i < (int)nodes.size(); i++) {
+    auto &n = nodes[i];
+    n.left   = lookup.count(makeKey(n.x - cellSize, n.y)) ? lookup[makeKey(n.x - cellSize, n.y)] : -1;
+    n.right  = lookup.count(makeKey(n.x + cellSize, n.y)) ? lookup[makeKey(n.x + cellSize, n.y)] : -1;
+    n.top    = lookup.count(makeKey(n.x, n.y + cellSize)) ? lookup[makeKey(n.x, n.y + cellSize)] : -1;
+    n.bottom = lookup.count(makeKey(n.x, n.y - cellSize)) ? lookup[makeKey(n.x, n.y - cellSize)] : -1;
   }
 }
 
 void Mesh2D::linkNodeNeighbors() {
-  std::unordered_map<std::string, EzNode*> Ez_lookup;
-  std::unordered_map<std::string, HxNode*> Hx_lookup;
-  std::unordered_map<std::string, HyNode*> Hy_lookup;
+  std::unordered_map<std::string, int> Ez_lookup;
+  std::unordered_map<std::string, int> Hx_lookup;
+  std::unordered_map<std::string, int> Hy_lookup;
 
   linkNeighbors(Ez_nodes, Ez_lookup, cellSize_);
   linkNeighbors(Hx_nodes, Hx_lookup, cellSize_);
@@ -156,34 +157,37 @@ void Mesh2D::linkCrossNeighbors() {
     return std::to_string(x) + "_" + std::to_string(y);
   };
 
-  // --- lookup maps ---
-  std::unordered_map<std::string, EzNode*> Ez_lookup;
-  std::unordered_map<std::string, HxNode*> Hx_lookup;
-  std::unordered_map<std::string, HyNode*> Hy_lookup;
+  // --- lookup maps (store index, not pointer) ---
+  std::unordered_map<std::string, int> Ez_lookup;
+  std::unordered_map<std::string, int> Hx_lookup;
+  std::unordered_map<std::string, int> Hy_lookup;
 
-  for (auto &n : Ez_nodes) Ez_lookup[makeKey(n.x, n.y)] = &n;
-  for (auto &n : Hx_nodes) Hx_lookup[makeKey(n.x, n.y)] = &n;
-  for (auto &n : Hy_nodes) Hy_lookup[makeKey(n.x, n.y)] = &n;
+  for (int i = 0; i < (int)Ez_nodes.size(); i++)
+    Ez_lookup[makeKey(Ez_nodes[i].x, Ez_nodes[i].y)] = i;
+  for (int i = 0; i < (int)Hx_nodes.size(); i++)
+    Hx_lookup[makeKey(Hx_nodes[i].x, Hx_nodes[i].y)] = i;
+  for (int i = 0; i < (int)Hy_nodes.size(); i++)
+    Hy_lookup[makeKey(Hy_nodes[i].x, Hy_nodes[i].y)] = i;
 
   // --- Ez -> Hx / Hy ---
   for (auto &n : Ez_nodes) {
-    n.hx_top    = Hx_lookup.count(makeKey(n.x, n.y + cellSize_/2)) ? Hx_lookup[makeKey(n.x, n.y + cellSize_/2)] : nullptr;
-    n.hx_bottom = Hx_lookup.count(makeKey(n.x, n.y - cellSize_/2)) ? Hx_lookup[makeKey(n.x, n.y - cellSize_/2)] : nullptr;
+    n.hx_top_id    = Hx_lookup.count(makeKey(n.x, n.y + cellSize_/2)) ? Hx_lookup[makeKey(n.x, n.y + cellSize_/2)] : -1;
+    n.hx_bottom_id = Hx_lookup.count(makeKey(n.x, n.y - cellSize_/2)) ? Hx_lookup[makeKey(n.x, n.y - cellSize_/2)] : -1;
 
-    n.hy_left   = Hy_lookup.count(makeKey(n.x - cellSize_/2, n.y)) ? Hy_lookup[makeKey(n.x - cellSize_/2, n.y)] : nullptr;
-    n.hy_right  = Hy_lookup.count(makeKey(n.x + cellSize_/2, n.y)) ? Hy_lookup[makeKey(n.x + cellSize_/2, n.y)] : nullptr;
+    n.hy_left_id   = Hy_lookup.count(makeKey(n.x - cellSize_/2, n.y)) ? Hy_lookup[makeKey(n.x - cellSize_/2, n.y)] : -1;
+    n.hy_right_id  = Hy_lookup.count(makeKey(n.x + cellSize_/2, n.y)) ? Hy_lookup[makeKey(n.x + cellSize_/2, n.y)] : -1;
   }
 
   // --- Hx -> Ez ---
   for (auto &n : Hx_nodes) {
-    n.ez_top    = Ez_lookup.count(makeKey(n.x, n.y + cellSize_/2)) ? Ez_lookup[makeKey(n.x, n.y + cellSize_/2)] : nullptr;
-    n.ez_bottom = Ez_lookup.count(makeKey(n.x, n.y - cellSize_/2)) ? Ez_lookup[makeKey(n.x, n.y - cellSize_/2)] : nullptr;
+    n.ez_top_id    = Ez_lookup.count(makeKey(n.x, n.y + cellSize_/2)) ? Ez_lookup[makeKey(n.x, n.y + cellSize_/2)] : -1;
+    n.ez_bottom_id = Ez_lookup.count(makeKey(n.x, n.y - cellSize_/2)) ? Ez_lookup[makeKey(n.x, n.y - cellSize_/2)] : -1;
   }
 
   // --- Hy -> Ez ---
   for (auto &n : Hy_nodes) {
-    n.ez_left   = Ez_lookup.count(makeKey(n.x - cellSize_/2, n.y)) ? Ez_lookup[makeKey(n.x - cellSize_/2, n.y)] : nullptr;
-    n.ez_right  = Ez_lookup.count(makeKey(n.x + cellSize_/2, n.y)) ? Ez_lookup[makeKey(n.x + cellSize_/2, n.y)] : nullptr;
+    n.ez_left_id   = Ez_lookup.count(makeKey(n.x - cellSize_/2, n.y)) ? Ez_lookup[makeKey(n.x - cellSize_/2, n.y)] : -1;
+    n.ez_right_id  = Ez_lookup.count(makeKey(n.x + cellSize_/2, n.y)) ? Ez_lookup[makeKey(n.x + cellSize_/2, n.y)] : -1;
   }
 }
 
@@ -192,13 +196,13 @@ void Mesh2D::add_ghost_layer() {
   Hx_domain_size = Hx_nodes.size();
   Hy_domain_size = Hy_nodes.size();
 
-  std::cout<<"---------------------------------"<<std::endl;
-  std::cout<<"Ez_domain_size = "<<Ez_domain_size<<std::endl;
-  std::cout<<"Hx_domain_size = "<<Hx_domain_size<<std::endl;
-  std::cout<<"Hy_domain_size = "<<Hy_domain_size<<std::endl;
-  std::cout<<"---------------------------------"<<std::endl;
+  std::cout << "---------------------------------\n";
+  std::cout << "Ez_domain_size = " << Ez_domain_size << "\n";
+  std::cout << "Hx_domain_size = " << Hx_domain_size << "\n";
+  std::cout << "Hy_domain_size = " << Hy_domain_size << "\n";
+  std::cout << "---------------------------------\n";
 
-  // Make stable copies of domain nodes (to avoid mixing with newly added ghosts)
+  // Stable copies of domain nodes
   std::vector<HxNode> Hx_copy_nodes = Hx_nodes;
   std::vector<HyNode> Hy_copy_nodes = Hy_nodes;
 
@@ -206,24 +210,24 @@ void Mesh2D::add_ghost_layer() {
 
   // --- Ez nodes: create missing Hx/Hy ghosts ---
   for (auto &n : Ez_nodes) {
-    if (n.hx_bottom == nullptr) {
-      Hx_nodes.emplace_back(n.x, n.y - cellSize_/2, Hx_domain_size + hx_id);
-      n.hx_bottom = &Hx_nodes.back();
+    if (n.hx_bottom_id == -1) {
+      Hx_nodes.emplace_back(n.x, n.y - cellSize_ / 2, Hx_domain_size + hx_id);
+      n.hx_bottom_id = Hx_nodes.back().nodeID;
       hx_id++;
     }
-    if (n.hx_top == nullptr) {
-      Hx_nodes.emplace_back(n.x, n.y + cellSize_/2, Hx_domain_size + hx_id);
-      n.hx_top = &Hx_nodes.back();
+    if (n.hx_top_id == -1) {
+      Hx_nodes.emplace_back(n.x, n.y + cellSize_ / 2, Hx_domain_size + hx_id);
+      n.hx_top_id = Hx_nodes.back().nodeID;
       hx_id++;
     }
-    if (n.hy_left == nullptr) {
-      Hy_nodes.emplace_back(n.x - cellSize_/2, n.y, Hy_domain_size + hy_id);
-      n.hy_left = &Hy_nodes.back();
+    if (n.hy_left_id == -1) {
+      Hy_nodes.emplace_back(n.x - cellSize_ / 2, n.y, Hy_domain_size + hy_id);
+      n.hy_left_id = Hy_nodes.back().nodeID;
       hy_id++;
     }
-    if (n.hy_right == nullptr) {
-      Hy_nodes.emplace_back(n.x + cellSize_/2, n.y, Hy_domain_size + hy_id);
-      n.hy_right = &Hy_nodes.back();
+    if (n.hy_right_id == -1) {
+      Hy_nodes.emplace_back(n.x + cellSize_ / 2, n.y, Hy_domain_size + hy_id);
+      n.hy_right_id = Hy_nodes.back().nodeID;
       hy_id++;
     }
   }
@@ -231,14 +235,14 @@ void Mesh2D::add_ghost_layer() {
   // --- Hx nodes: create missing Ez ghosts ---
   for (int i = 0; i < Hx_domain_size; i++) {
     const auto &orig = Hx_copy_nodes[i];
-    if (orig.ez_bottom == nullptr) {
-      Ez_nodes.emplace_back(orig.x, orig.y - cellSize_/2, Ez_domain_size + ez_id);
-      Hx_nodes[i].ez_bottom = &Ez_nodes.back();
+    if (orig.ez_bottom_id == -1) {
+      Ez_nodes.emplace_back(orig.x, orig.y - cellSize_ / 2, Ez_domain_size + ez_id);
+      Hx_nodes[i].ez_bottom_id = Ez_nodes.back().nodeID;
       ez_id++;
     }
-    if (orig.ez_top == nullptr) {
-      Ez_nodes.emplace_back(orig.x, orig.y + cellSize_/2, Ez_domain_size + ez_id);
-      Hx_nodes[i].ez_top = &Ez_nodes.back();
+    if (orig.ez_top_id == -1) {
+      Ez_nodes.emplace_back(orig.x, orig.y + cellSize_ / 2, Ez_domain_size + ez_id);
+      Hx_nodes[i].ez_top_id = Ez_nodes.back().nodeID;
       ez_id++;
     }
   }
@@ -246,14 +250,14 @@ void Mesh2D::add_ghost_layer() {
   // --- Hy nodes: create missing Ez ghosts ---
   for (int i = 0; i < Hy_domain_size; i++) {
     const auto &orig = Hy_copy_nodes[i];
-    if (orig.ez_left == nullptr) {
-      Ez_nodes.emplace_back(orig.x - cellSize_/2, orig.y, Ez_domain_size + ez_id);
-      Hy_nodes[i].ez_left = &Ez_nodes.back();
+    if (orig.ez_left_id == -1) {
+      Ez_nodes.emplace_back(orig.x - cellSize_ / 2, orig.y, Ez_domain_size + ez_id);
+      Hy_nodes[i].ez_left_id = Ez_nodes.back().nodeID;
       ez_id++;
     }
-    if (orig.ez_right == nullptr) {
-      Ez_nodes.emplace_back(orig.x + cellSize_/2, orig.y, Ez_domain_size + ez_id);
-      Hy_nodes[i].ez_right = &Ez_nodes.back();
+    if (orig.ez_right_id == -1) {
+      Ez_nodes.emplace_back(orig.x + cellSize_ / 2, orig.y, Ez_domain_size + ez_id);
+      Hy_nodes[i].ez_right_id = Ez_nodes.back().nodeID;
       ez_id++;
     }
   }
@@ -264,42 +268,6 @@ void Mesh2D::add_ghost_layer() {
   Hy_ghost_cells = Hy_nodes.size() - Hy_domain_size;
 }
 
-void Mesh2D::check_nullptr() {
-  for (int i = 0; i < Ez_domain_size; i++) {
-    if (Ez_nodes[i].hx_bottom == nullptr) std::cout << "Ez["<<i<<"].hx_bottom == nullptr\n";
-    if (Ez_nodes[i].hx_top    == nullptr) std::cout << "Ez["<<i<<"].hx_top == nullptr\n";
-    if (Ez_nodes[i].hy_left   == nullptr) std::cout << "Ez["<<i<<"].hy_left == nullptr\n";
-    if (Ez_nodes[i].hy_right  == nullptr) std::cout << "Ez["<<i<<"].hy_right == nullptr\n";
-  
-  }
-
-  for (int i = 0; i < Hx_domain_size; i++) {  
-    if (Hx_nodes[i].ez_top    == nullptr) std::cout << "Hx["<<i<<"].ez_top == nullptr\n";
-    if (Hx_nodes[i].ez_bottom == nullptr) std::cout << "Hx["<<i<<"].ez_bottom == nullptr\n";
-  }
-
-  for (int i = 0; i < Hy_domain_size; i++) {    
-    if (Hy_nodes[i].ez_left  == nullptr) std::cout << "Hy["<<i<<"].ez_left == nullptr\n";
-    if (Hy_nodes[i].ez_right == nullptr) std::cout << "Hy["<<i<<"].ez_right == nullptr\n";
-  }
-}
-
-void Mesh2D::check_connects() {
-
-  std::cout<<"Ez_nodes[100].x = "<<Ez_nodes[100].x<<"\n";
-  std::cout<<"Ez_nodes[100].y = "<<Ez_nodes[100].y<<"\n";
-
-  std::cout<<"Ez_nodes[100].hx_top->x = "<<Ez_nodes[100].hx_top->x<<"\n";
-  std::cout<<"Ez_nodes[100].hx_top->y = "<<Ez_nodes[100].hx_top->y<<"\n";
-  std::cout<<"Ez_nodes[100].hx_top->y = "<<Ez_nodes[100].hx_top->nodeID<<"\n";
-
-  std::cout<<"Ez_nodes[100].hx_top->x = "<<Ez_nodes[100].hx_bottom->x<<"\n";
-  std::cout<<"Ez_nodes[100].hx_top->y = "<<Ez_nodes[100].hx_bottom->y<<"\n";
-  std::cout<<"Ez_nodes[100].hx_top->nodeID = "<<Ez_nodes[100].hx_bottom->nodeID<<"\n";
-  std::cout<<"Ez_nodes[100].hx_bottom->ez_top->nodeID = "<<Ez_nodes[100].hx_bottom->ez_top->nodeID<<"\n";
-
-
-}
 
 void Mesh2D::saveMeshToVTK(const std::string& type, const std::string& filename) const {
   VTKQuadWriter vtk2elements;
@@ -316,17 +284,21 @@ void Mesh2D::saveMeshToVTK(const std::string& type, const std::string& filename)
       coords.push_back(n.x);
       coords.push_back(n.y);
       coords.push_back(0.0);
-      
     }
 
     for (int i = 0; i < Ez_domain_size; i++) {
       const auto &n = Ez_nodes[i];
-      if (n.right && n.top && n.top->right) {
-        connectivity.push_back(n.nodeID);
-        connectivity.push_back(n.right->nodeID);
-        connectivity.push_back(n.top->right->nodeID);
-        connectivity.push_back(n.top->nodeID);
-        field.push_back(n.fieldValue);
+      if (n.right != -1 && n.top != -1) {
+        const auto &rightNode = Ez_nodes[n.right];
+        const auto &topNode   = Ez_nodes[n.top];
+        if (topNode.right != -1) {
+          const auto &topRight = Ez_nodes[topNode.right];
+          connectivity.push_back(n.nodeID);
+          connectivity.push_back(rightNode.nodeID);
+          connectivity.push_back(topRight.nodeID);
+          connectivity.push_back(topNode.nodeID);
+          field.push_back(n.fieldValue);
+        }
       }
     }
   }
@@ -338,20 +310,23 @@ void Mesh2D::saveMeshToVTK(const std::string& type, const std::string& filename)
       coords.push_back(n.x);
       coords.push_back(n.y);
       coords.push_back(0.0);
-      
     }
 
     for (int i = 0; i < Hx_domain_size; i++) {
       const auto &n = Hx_nodes[i];
-      if (n.right && n.top && n.top->right) {
-        connectivity.push_back(n.nodeID);
-        connectivity.push_back(n.right->nodeID);
-        connectivity.push_back(n.top->right->nodeID);
-        connectivity.push_back(n.top->nodeID);
-        field.push_back(n.fieldValue);
+      if (n.right != -1 && n.top != -1) {
+        const auto &rightNode = Hx_nodes[n.right];
+        const auto &topNode   = Hx_nodes[n.top];
+        if (topNode.right != -1) {
+          const auto &topRight = Hx_nodes[topNode.right];
+          connectivity.push_back(n.nodeID);
+          connectivity.push_back(rightNode.nodeID);
+          connectivity.push_back(topRight.nodeID);
+          connectivity.push_back(topNode.nodeID);
+          field.push_back(n.fieldValue);
+        }
       }
     }
-    // often Hx are exported as points, so you can drop the connectivity part if not needed
   }
   else if (type == "Hy") {
     fieldName = "Hy";
@@ -361,20 +336,23 @@ void Mesh2D::saveMeshToVTK(const std::string& type, const std::string& filename)
       coords.push_back(n.x);
       coords.push_back(n.y);
       coords.push_back(0.0);
-      
     }
 
     for (int i = 0; i < Hy_domain_size; i++) {
       const auto &n = Hy_nodes[i];
-      if (n.right && n.top && n.top->right) {
-        connectivity.push_back(n.nodeID);
-        connectivity.push_back(n.right->nodeID);
-        connectivity.push_back(n.top->right->nodeID);
-        connectivity.push_back(n.top->nodeID);
-        field.push_back(n.fieldValue);
+      if (n.right != -1 && n.top != -1) {
+        const auto &rightNode = Hy_nodes[n.right];
+        const auto &topNode   = Hy_nodes[n.top];
+        if (topNode.right != -1) {
+          const auto &topRight = Hy_nodes[topNode.right];
+          connectivity.push_back(n.nodeID);
+          connectivity.push_back(rightNode.nodeID);
+          connectivity.push_back(topRight.nodeID);
+          connectivity.push_back(topNode.nodeID);
+          field.push_back(n.fieldValue);
+        }
       }
     }
-    // same note as Hx
   }
   else {
     throw std::runtime_error("Unknown type: " + type);
@@ -384,5 +362,4 @@ void Mesh2D::saveMeshToVTK(const std::string& type, const std::string& filename)
   vtk2elements.set_cells(connectivity);
   vtk2elements.add_scalar(field, fieldName);
   vtk2elements.write_vtk(filename);
-
 }

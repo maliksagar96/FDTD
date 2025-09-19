@@ -15,33 +15,42 @@ class BaseNode {
 public:
   BaseNode(double x_, double y_, int id)
     : x(x_), y(y_), nodeID(id),
-      left(nullptr), right(nullptr), top(nullptr), bottom(nullptr), fieldValue(0) {}
+      left(-1), right(-1), top(-1), bottom(-1), fieldValue(0) {}
   virtual ~BaseNode() = default;
 
   int nodeID;
   double x, y;
   double fieldValue;
-  gp_Pnt nodePoint;
-  BaseNode *left, *right, *top, *bottom;  
+  gp_Pnt nodePoint;  
+  int left, right, top, bottom;
 };
 
 class EzNode : public BaseNode {
-  public:
-    EzNode(double x, double y, int id) : BaseNode(x, y, id) {}
-    HxNode *hx_top, *hx_bottom;
-    HyNode *hy_left, *hy_right;
+public:
+  EzNode(double x, double y, int id) 
+    : BaseNode(x, y, id),
+      hx_top_id(-1), hx_bottom_id(-1),
+      hy_left_id(-1), hy_right_id(-1) {}
+  int hx_top_id, hx_bottom_id, hy_left_id, hy_right_id;
 };
 
 class HxNode : public BaseNode {
 public:
-  HxNode(double x, double y, int id) : BaseNode(x, y, id) {}
-  EzNode *ez_top, *ez_bottom;
+  HxNode(double x, double y, int id) 
+    : BaseNode(x, y, id),
+      ez_top_id(-1), ez_bottom_id(-1) {}
+  int ez_top_id, ez_bottom_id;
+  double Psi_Hx_y = 0.0;
+
 };
 
 class HyNode : public BaseNode {
 public:
-  HyNode(double x, double y, int id) : BaseNode(x, y, id) {}
-  EzNode *ez_left, *ez_right;
+  HyNode(double x, double y, int id) 
+    : BaseNode(x, y, id),
+      ez_left_id(-1), ez_right_id(-1) {}
+  int ez_left_id, ez_right_id;
+  double Psi_Hy_x = 0.0;
 };
 
 class Mesh2D {
@@ -52,6 +61,7 @@ class Mesh2D {
     void filterNodesOutsideGeometry();            // keep only inside nodes
     void linkNodeNeighbors();                     // set left/right/top/bottom
     void linkCrossNeighbors();
+    void set_PML_parameters();
     void add_ghost_layer();
     void check_nullptr();
     void check_connects();
@@ -75,7 +85,10 @@ class Mesh2D {
     TopoDS_Face face_;                            
     std::vector<EzNode> Ez_nodes;
     std::vector<HxNode> Hx_nodes;
-    std::vector<HyNode> Hy_nodes;        
+    std::vector<HyNode> Hy_nodes;     
+    
+    
+
     int Ez_domain_size, Hx_domain_size, Hy_domain_size;
     int Ez_ghost_cells, Hx_ghost_cells, Hy_ghost_cells;
 };

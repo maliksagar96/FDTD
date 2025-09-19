@@ -1,14 +1,16 @@
 {
   "filename": "square_1m.STEP",
-  "frequency":10e9,
-  "Iterations":4000,
+  "frequency":3e8,
+  "Iterations":4001,
   "data_capture_interval":20,
-  "simulation_size":[-0.2,-0.1,0.2,0.1],
-  "source_point":[0.05, 0.05],
+  "domain_region":[-1,-1,1,1],
+  "source_point":[0.5, 0.5],
   "cells_per_wavelength":50,
-  "amplitude":1,
-  "CFL":0.75,
-  "pml_size": 100,
-  "source_type":"gaussian",
-  "cmap":[-0.001, 0.001]
+  "amplitude":10,
+  "CFL":0.5,
+  "pml_region": 3,
+  "source_type":"sin",
+  "pulse_delay": 50,
+  "pulse_width": 1
+  
 }

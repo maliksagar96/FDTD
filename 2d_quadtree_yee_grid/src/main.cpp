@@ -1,5 +1,6 @@
 #include <Mesh2D.h>
 #include <fdtd_2d.h>
+#include <global_variables.h>
 
 using namespace std;
 
@@ -17,33 +18,36 @@ int main(int argc, char* argv[]) {
 
   Json::Value root;
   file >> root;
+  read_json(root);
+  FDTD_2D solver;
 
-  FDTD_2D solver(root);
-
-  Mesh2D mesh("../test/square_1m.STEP", 0.05);
+  // Mesh2D mesh("../test/square_1m.STEP", 0.005);
+  Mesh2D mesh(STEP_filename, step_size);
   if (!mesh.readSTEP()) return 1;
 
   mesh.generateUniformGrid();
-  mesh.filterNodesOutsideGeometry();
+  // mesh.filterNodesOutsideGeometry();
   mesh.linkNodeNeighbors();
   mesh.linkCrossNeighbors();
   mesh.add_ghost_layer();
-  mesh.check_connects();
+  
   mesh.saveMeshToVTK("Ez", "Ezmesh.vtk");  
   mesh.saveMeshToVTK("Hx", "Hxmesh.vtk");  
   mesh.saveMeshToVTK("Hy", "Hymesh.vtk");  
-  mesh.check_nullptr();
-  // int Ez_domain_size = mesh.get_Ez_domain_size();
-  // int Hx_domain_size = mesh.get_Hx_domain_size();
-  // int Hy_domain_size = mesh.get_Hy_domain_size();
+  
+  int Ez_domain_size = mesh.get_Ez_domain_size();
+  int Hx_domain_size = mesh.get_Hx_domain_size();
+  int Hy_domain_size = mesh.get_Hy_domain_size();
 
+  vector<EzNode> Ez_nodes = mesh.get_Ez_Nodes();
+  vector<HxNode> Hx_nodes = mesh.get_Hx_Nodes();
+  vector<HyNode> Hy_nodes = mesh.get_Hy_Nodes(); 
 
-  // vector<EzNode> Ez_nodes = mesh.get_Ez_Nodes();
-  // vector<HxNode> Hx_nodes = mesh.get_Hx_Nodes();
-  // vector<HyNode> Hy_nodes = mesh.get_Hy_Nodes(); 
-
-  // solver.get_fields(Ez_nodes, Hx_nodes, Hy_nodes);
-  // solver.set_domain_size(Ez_domain_size, Hx_domain_size, Hy_domain_size);
+  solver.get_fields(Ez_nodes, Hx_nodes, Hy_nodes);
+  solver.set_domain_size(Ez_domain_size, Hx_domain_size, Hy_domain_size);
+  solver.set_PML_parameters();
   // solver.TMz_mesh_update();
+  solver.TMz_mesh_update_CPML();
+  
   return 0;
 }

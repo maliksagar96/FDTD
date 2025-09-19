@@ -13,6 +13,7 @@ set(SOURCES
     src/Mesh2D.cpp
     src/vtkWriter.cpp
     src/fdtd_2d.cpp
+    src/global_variables.cpp
 )
 
 add_executable(read_step ${SOURCES})
